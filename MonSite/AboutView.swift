@@ -1,9 +1,10 @@
 import SwiftUI
 
 enum AppLinks {
-    static let privacy = URL(string: "https://naniniyesuh.github.io/monsite/privacy.html")!
-    static let support = URL(string: "https://naniniyesuh.github.io/monsite/support.html")!
-    static let issues = URL(string: "https://github.com/naniniyesuh/monsite/issues")!
+    static let privacy = URL(string: "https://alpp.studio/monsite/privacy/")!
+    static let support = URL(string: "https://alpp.studio/monsite/")!
+    static let contactEmail = "help@alpp.studio"
+    static let mail = URL(string: "mailto:help@alpp.studio?subject=MonSite")!
 }
 
 struct AboutView: View {
@@ -50,8 +51,12 @@ struct AboutView: View {
                     Link(destination: AppLinks.support) {
                         Label("Destek", systemImage: "questionmark.circle")
                     }
-                    Link(destination: AppLinks.issues) {
-                        Label("Sorun bildir / öneri gönder", systemImage: "exclamationmark.bubble")
+                    Link(destination: AppLinks.mail) {
+                        LabeledContent {
+                            Text(AppLinks.contactEmail).foregroundStyle(.secondary)
+                        } label: {
+                            Label("E-posta gönder", systemImage: "envelope")
+                        }
                     }
                 } header: {
                     Text("Yardım")

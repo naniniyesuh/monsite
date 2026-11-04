@@ -11,7 +11,7 @@ Projede hazır olanlar:
 - Arka plan yenileme (`fetch`) ve görev kimliği `studio.alpp.monsite.refresh`
 - Hassas dosya taraması varsayılan olarak kapalı; açarken site sahipliği onayı isteniyor
 - Hakkında ekranı: gizlilik politikası ve destek bağlantıları
-- Gizlilik, destek ve tanıtım sayfaları (`docs/` klasörü, GitHub Pages için)
+- Gizlilik ve destek sayfaları: https://alpp.studio/monsite/ (ayrı `alpp.studio` deposunda)
 - GitHub Actions derlemesi: her push'ta Xcode 16.4 ile derleniyor
 
 ---
@@ -21,11 +21,9 @@ Projede hazır olanlar:
 ### Bir kez yapılacaklar
 
 - [ ] **Apple Developer Program üyeliği** (yıllık 99 USD). MANDIRAKE için zaten varsa bu adımı atlayın.
-- [ ] **GitHub Pages'i açın.** GitHub'da `naniniyesuh/monsite` → **Settings** → **Pages** → **Source: Deploy from a branch** → **Branch: `main`**, klasör **`/docs`** → **Save**.
-  - Birkaç dakika sonra şu adresler açılmalı:
-    - https://naniniyesuh.github.io/monsite/
-    - https://naniniyesuh.github.io/monsite/privacy.html
-    - https://naniniyesuh.github.io/monsite/support.html
+- [ ] **alpp.studio sitesinin yayında olduğunu kontrol edin.** MonSite sayfaları ayrı `alpp.studio` deposunda. Şu adresler açılmalı:
+  - https://alpp.studio/monsite/
+  - https://alpp.studio/monsite/privacy/
 - [ ] **Bundle ID'yi kaydedin.** Xcode → MonSite hedefi → **Signing & Capabilities** → Team'i seçin, **Automatically manage signing** açık kalsın. Xcode, `studio.alpp.monsite` kimliğini geliştirici hesabınıza kendisi kaydeder.
 
 ### App Store Connect
@@ -39,7 +37,7 @@ Projede hazır olanlar:
   - Kullanıcı erişimi: Tam erişim
 - [ ] **Uygulama Bilgileri**
   - Kategori: birincil **Geliştirici Araçları**, ikincil **Yardımcı Uygulamalar**
-  - Gizlilik politikası URL'si: `https://naniniyesuh.github.io/monsite/privacy.html`
+  - Gizlilik politikası URL'si: `https://alpp.studio/monsite/privacy/`
   - İngilizce yerelleştirme ekleyin (sağ üstteki dil menüsü → İngilizce (ABD)). Bölüm 2'deki İngilizce metinleri kullanın.
 - [ ] **Yaş derecelendirmesi**: bölüm 3'teki cevaplar → 4+
 - [ ] **Uygulama Gizliliği** → **Veri Toplanmıyor** (bölüm 4)
@@ -134,12 +132,12 @@ web,site,denetim,izleme,ssl,sertifika,kırık link,hız,performans,güvenlik,upt
 
 **Destek URL'si**
 ```
-https://naniniyesuh.github.io/monsite/support.html
+https://alpp.studio/monsite/
 ```
 
-**Pazarlama URL'si**
+**Pazarlama URL'si** (isteğe bağlı)
 ```
-https://naniniyesuh.github.io/monsite/
+https://alpp.studio/
 ```
 
 ### English (U.S.)
@@ -259,6 +257,7 @@ About the optional sensitive file check:
 It is off by default and requires the user to confirm they manage the site. It only requests a short list of well-known public paths (such as /.git/HEAD or /.env) to warn site owners about files exposed by misconfiguration. No exploitation or authentication attempts are made.
 
 All data stays on the device. The app collects no personal data.
+Contact: help@alpp.studio
 ```
 
 ---
