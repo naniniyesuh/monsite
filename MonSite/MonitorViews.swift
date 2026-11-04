@@ -618,7 +618,7 @@ struct DiffSections: View {
             Section {
                 ForEach(diff.addedPages, id: \.self) { URLRow(url: $0, icon: "plus.circle.fill", color: .accentColor) }
             } header: {
-                DiffHeader(title: "Yeni sayfalar", count: diff.addedPages.count, color: .blue)
+                DiffHeader(title: "Yeni sayfalar", count: diff.addedPages.count, color: .accentColor)
             }
         }
 
