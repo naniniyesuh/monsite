@@ -41,7 +41,7 @@ Projede hazır olanlar:
   - İngilizce yerelleştirme ekleyin (sağ üstteki dil menüsü → İngilizce (ABD)). Bölüm 2'deki İngilizce metinleri kullanın.
 - [ ] **Yaş derecelendirmesi**: bölüm 3'teki cevaplar → 4+
 - [ ] **Uygulama Gizliliği** → **Veri Toplanmıyor** (bölüm 4)
-- [ ] **Fiyatlandırma ve Erişilebilirlik**: 0,99 USD (temel ülke ABD), tüm ülkeler. Önce **İşletme → Sözleşmeler** bölümünde Ücretli Uygulamalar Sözleşmesi, banka ve vergi bilgileri tamamlanmalı.
+- [ ] **Fiyatlandırma ve Erişilebilirlik**: Ücretsiz, tüm ülkeler
 - [ ] **1.0 sürüm sayfası**: bölüm 2'deki metinler, bölüm 6'daki ekran görüntüleri, bölüm 5'teki inceleme notu
   - Telif hakkı: `2026 <adınız soyadınız>`
 
