@@ -55,7 +55,7 @@ struct ReportView: View {
                     NavigationLink {
                         IssuesView(title: c.title, issues: all)
                     } label: {
-                        RowLabel(icon: c.systemImage, tint: .accentColor, title: c.title) {
+                        RowLabel(icon: c.systemImage, tint: Color.brand, title: c.title) {
                             if let worst {
                                 CountBadge(count: problems.count, tint: SeverityIcon(severity: worst).color)
                             } else {
@@ -111,14 +111,14 @@ struct ReportView: View {
                 NavigationLink {
                     PagesListView(report: report)
                 } label: {
-                    RowLabel(icon: "doc.on.doc", tint: .accentColor, title: "Tüm sayfalar") {
+                    RowLabel(icon: "doc.on.doc", tint: Color.brand, title: "Tüm sayfalar") {
                         Text("\(report.pages.count)").foregroundStyle(.secondary)
                     }
                 }
                 NavigationLink {
                     ResourcesListView(report: report)
                 } label: {
-                    RowLabel(icon: "square.stack.3d.up", tint: .accentColor, title: "Tüm kaynaklar") {
+                    RowLabel(icon: "square.stack.3d.up", tint: Color.brand, title: "Tüm kaynaklar") {
                         Text("\(report.resources.count)").foregroundStyle(.secondary)
                     }
                 }
@@ -254,7 +254,7 @@ private struct MetricGrid: View {
         let certDays = report.certificate?.daysRemaining
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
             MetricTile(icon: "doc.text.magnifyingglass", label: "Taranan sayfa",
-                       value: "\(report.pages.count)", tint: .accentColor)
+                       value: "\(report.pages.count)", tint: Color.brand)
             MetricTile(icon: "exclamationmark.octagon", label: "Kritik + hata",
                        value: "\(problems)", tint: problems > 0 ? .red : .green)
             MetricTile(icon: "timer", label: "Ort. yükleme",

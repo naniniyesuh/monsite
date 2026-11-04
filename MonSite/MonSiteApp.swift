@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import UserNotifications
 
 @main
@@ -9,6 +10,8 @@ struct MonSiteApp: App {
 
     init() {
         UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
+        // Gezinme çubuğundaki "Geri" düğmesi, uyarılar ve sistem kontrolleri de marka rengini kullansın.
+        UIView.appearance().tintColor = UIColor(named: "AccentColor")
     }
 
     var body: some Scene {
@@ -23,6 +26,7 @@ struct MonSiteApp: App {
                     .tag(1)
             }
             .environmentObject(store)
+            .tint(Color.brand)
             .task {
                 LaunchOptions.applyDemoMonitor(store)
                 await ForegroundScheduler.loop()

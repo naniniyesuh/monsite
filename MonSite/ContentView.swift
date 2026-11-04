@@ -98,7 +98,7 @@ struct ContentView: View {
             .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(urlFocused ? Color.accentColor : .clear, lineWidth: 1.5)
+                    .strokeBorder(urlFocused ? Color.brand : .clear, lineWidth: 1.5)
             )
 
             if let err = vm.inputError {
@@ -154,9 +154,9 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Image(systemName: f.icon)
                         .font(.title3)
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Color.brand)
                         .frame(width: 36, height: 36)
-                        .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 9))
+                        .background(Color.brand.opacity(0.12), in: RoundedRectangle(cornerRadius: 9))
                     Text(f.title).font(.subheadline.weight(.semibold))
                     Text(f.subtitle).font(.caption).foregroundStyle(.secondary)
                 }
@@ -179,7 +179,7 @@ struct ContentView: View {
                 }
                 if vm.resourcesTotal > 0 {
                     ProgressView(value: Double(vm.resourcesDone), total: Double(vm.resourcesTotal))
-                        .tint(.accentColor)
+                        .tint(Color.brand)
                     Text("\(vm.resourcesDone) / \(vm.resourcesTotal)")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
@@ -334,6 +334,12 @@ struct ContentView: View {
 
 // MARK: - Bileşenler
 
+extension Color {
+    /// Marka vurgu rengi (Assets → AccentColor). Sistemin varsayılan mavisine düşmemesi için
+    /// her yerde doğrudan bu renk kullanılır.
+    static let brand = Color("AccentColor")
+}
+
 /// Hassas dosya taramasını açmadan önce site sahipliğini onaylatır.
 struct ProbeToggle: View {
     @Binding var isOn: Bool
@@ -416,7 +422,7 @@ private struct StageIndicator: View {
                 VStack(spacing: 6) {
                     ZStack {
                         Circle()
-                            .fill(i < current ? Color.accentColor : i == current ? Color.accentColor.opacity(0.15) : Color(.tertiarySystemFill))
+                            .fill(i < current ? Color.brand : i == current ? Color.brand.opacity(0.15) : Color(.tertiarySystemFill))
                             .frame(width: 26, height: 26)
                         if i < current {
                             Image(systemName: "checkmark")
@@ -425,7 +431,7 @@ private struct StageIndicator: View {
                         } else {
                             Text("\(i + 1)")
                                 .font(.caption.weight(.semibold))
-                                .foregroundStyle(i == current ? Color.accentColor : .secondary)
+                                .foregroundStyle(i == current ? Color.brand : .secondary)
                         }
                     }
                     Text(name)

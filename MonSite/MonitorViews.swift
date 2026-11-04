@@ -16,9 +16,9 @@ struct MonitorsView: View {
                         VStack(spacing: 12) {
                             Image(systemName: "clock.arrow.2.circlepath")
                                 .font(.system(size: 34, weight: .medium))
-                                .foregroundStyle(Color.accentColor)
+                                .foregroundStyle(Color.brand)
                                 .frame(width: 64, height: 64)
-                                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .background(Color.brand.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                             Text("Sitelerinizi düzenli izleyin").font(.headline)
                             Text("Seçtiğiniz sıklıkta otomatik kontrol yapılır ve her sonuç bir öncekiyle karşılaştırılır.")
                                 .font(.subheadline)
@@ -48,7 +48,7 @@ struct MonitorsView: View {
                                 } label: {
                                     Label("Şimdi", systemImage: "arrow.clockwise")
                                 }
-                                .tint(.accentColor)
+                                .tint(Color.brand)
                             }
                             .swipeActions(edge: .trailing) {
                                 Button(role: .destructive) {
@@ -474,10 +474,10 @@ private struct TrendChart: View {
         Chart(runs) { r in
             LineMark(x: .value("Tarih", r.date), y: .value(label, value(r)))
                 .interpolationMethod(.monotone)
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Color.brand)
             PointMark(x: .value("Tarih", r.date), y: .value(label, value(r)))
                 .symbolSize(r.diff?.hasRegressions == true ? 60 : 24)
-                .foregroundStyle(r.diff?.hasRegressions == true ? Color.red : Color.accentColor)
+                .foregroundStyle(r.diff?.hasRegressions == true ? Color.red : Color.brand)
         }
         .chartYScale(domain: metric == 0 ? 0.0...100.0 : 0.0...max(1.0, (runs.map(value).max() ?? 1.0) * 1.15))
     }
@@ -495,8 +495,8 @@ private struct RunRow: View {
                     Text(run.quick ? "Hızlı" : "Tam")
                         .font(.caption2.weight(.semibold))
                         .padding(.horizontal, 6).padding(.vertical, 2)
-                        .background((run.quick ? Color.orange : Color.accentColor).opacity(0.14), in: Capsule())
-                        .foregroundStyle(run.quick ? Color.orange : Color.accentColor)
+                        .background((run.quick ? Color.orange : Color.brand).opacity(0.14), in: Capsule())
+                        .foregroundStyle(run.quick ? Color.orange : Color.brand)
                 }
                 Text(run.diff?.summary ?? "İlk kontrol")
                     .font(.caption)
@@ -677,9 +677,9 @@ struct DiffSections: View {
         Group {
         if !diff.addedPages.isEmpty {
             Section {
-                ForEach(diff.addedPages, id: \.self) { URLRow(url: $0, icon: "plus.circle.fill", color: .accentColor) }
+                ForEach(diff.addedPages, id: \.self) { URLRow(url: $0, icon: "plus.circle.fill", color: Color.brand) }
             } header: {
-                DiffHeader(title: "Yeni sayfalar", count: diff.addedPages.count, color: .accentColor)
+                DiffHeader(title: "Yeni sayfalar", count: diff.addedPages.count, color: Color.brand)
             }
         }
 

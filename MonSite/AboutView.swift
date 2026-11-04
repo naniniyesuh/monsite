@@ -38,7 +38,7 @@ struct AboutView: View {
                     Label {
                         Text("MonSite hiçbir kişisel veri toplamaz. Tarama sonuçları yalnızca bu cihazda saklanır; sunucuya gönderilmez.")
                     } icon: {
-                        Image(systemName: "hand.raised.fill").foregroundStyle(Color.accentColor)
+                        Image(systemName: "hand.raised.fill").foregroundStyle(Color.brand)
                     }
                     Link(destination: AppLinks.privacy) {
                         Label("Gizlilik politikası", systemImage: "lock.doc")
