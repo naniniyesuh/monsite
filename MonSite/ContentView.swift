@@ -30,6 +30,12 @@ struct ContentView: View {
                 .padding(.bottom, 32)
             }
             .scrollDismissesKeyboard(.interactively)
+            .task {
+                if let url = LaunchOptions.autoScanURL, vm.report == nil, !vm.isRunning {
+                    vm.urlText = url
+                    vm.start()
+                }
+            }
             .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item: Binding(get: { watchURL.map(WatchTarget.init) }, set: { watchURL = $0?.url })) { t in
