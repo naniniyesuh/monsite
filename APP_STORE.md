@@ -83,37 +83,53 @@ Sitenizi tek dokunuşla tarayın: kırık bağlantılar, yavaş sayfalar, güven
 
 **Açıklama**
 ```
-MonSite, web sitenizi baştan sona gezer ve sağlığını tek bir raporda gösterir. Adresi yazın, taramayı başlatın; gerisini MonSite halleder.
+MonSite, web sitenizi baştan sona gezer ve sağlığını tek bir raporda gösterir: bağlantılar, performans, erişilebilirlik, SEO, güvenlik ve SSL. Adresi yazın, taramayı başlatın; gerisini MonSite halleder.
 
 KIRIK BAĞLANTI VE KAYNAKLAR
 • Sitedeki tüm sayfaları sırayla açar, 404 ve sunucu hatalarını bulur
 • Yüklenemeyen resim, script, CSS, font ve dosyaları listeler
 • Açılamayan bozuk resimleri ve hata sayfası döndüren adresleri yakalar
 • Dış bağlantıların hâlâ çalışıp çalışmadığını kontrol eder
+• Sitemap ve robots.txt'yi okur, CSS içindeki font ve resimleri de kontrol eder
 
 PERFORMANS
 • Her sayfa için DNS, bağlantı, TLS, ilk bayt ve indirme süreleri
 • En yavaş sayfalar ve en yavaş yüklenen parçalar
-• Aşırı büyük resim ve dosyalar için uyarılar
+• Sıkıştırma, önbellek, HTTP/2, oluşturmayı engelleyen script'ler
+• Aşırı büyük resimler ve sayfa ağırlığı
+
+ERİŞİLEBİLİRLİK (WCAG)
+• Alt metni olmayan görseller, adı olmayan bağlantı ve düğmeler
+• Etiketi olmayan form alanları, sayfa dili, başlık yapısı
+• Yakınlaştırmanın engellenmesi, başlıksız iframe'ler ve daha fazlası
+
+SEO
+• Başlık ve meta açıklama kontrolleri, yinelenen başlıklar
+• Canonical, noindex, mobil uyum, sosyal medya etiketleri
+• Sitemap, robots.txt, yetim sayfalar ve soft 404
 
 GÜVENLİK
 • HTTPS kullanımı ve HTTP'den HTTPS'e yönlendirme
 • HSTS, CSP, clickjacking koruması gibi güvenlik başlıkları
 • Çerez güvenlik ayarları, karışık içerik, şifresiz gönderilen formlar
-• Sunucu sürüm bilgisi sızıntıları
+• CSP ve HSTS kalitesi, dış script'lerde bütünlük (SRI) kontrolü
+• Sunucu sürüm bilgisi sızıntıları, security.txt
 • İsteğe bağlı: herkese açık kalmış .git, .env ve yedek dosyaları
 
 SSL SERTİFİKASI
 • Güvenilirlik, sertifikayı veren kuruluş, başlangıç ve bitiş tarihi
 • Bitişe kaç gün kaldığı; süre yaklaşınca uyarı
+• Anahtar türü ve uzunluğu
 
 SAĞLIK PUANI
-• Bulunan sorunlara göre 0–100 arası puan ve A–F not
+• Genel puan ve A–F not, ayrıca beş alanın her biri için ayrı puan
 • Sorunlar önem derecesine ve kategoriye göre gruplanır
 
 ZAMANLANMIŞ İZLEME
 • Sitelerinizi dakikalık, saatlik veya günlük aralıklarla izleyin
 • Her kontrol bir öncekiyle karşılaştırılır: yeni ve çözülen sorunlar, bozulan ve düzelen kaynaklar, yavaşlayan sayfalar, sertifika yenilenmesi
+• Çalışırlık yüzdesi, ortalama yanıt süresi ve son kesinti
+• Ana sayfada beklenen bir metin yoksa kesinti olarak algılama
 • Değişiklik olunca bildirim
 • Puan, yükleme süresi ve sorun sayısı için eğilim grafikleri
 
@@ -127,7 +143,7 @@ Not: Arka plandaki kontrollerin zamanını iOS belirler; uygulama açıkken kont
 
 **Anahtar kelimeler** (100 karakter sınırı, virgülle, boşluksuz)
 ```
-web,site,denetim,izleme,ssl,sertifika,kırık link,hız,performans,güvenlik,uptime,seo,404,https
+web,site,denetim,izleme,ssl,sertifika,kırık link,hız,güvenlik,uptime,seo,wcag,erişilebilirlik
 ```
 
 **Destek URL'si**
@@ -159,37 +175,53 @@ Scan your site in one tap: broken links, slow pages, security gaps and SSL expir
 
 **Description**
 ```
-MonSite crawls your website from top to bottom and shows its health in a single report. Type the address, start the scan, and MonSite does the rest.
+MonSite crawls your website from top to bottom and shows its health in a single report: links, performance, accessibility, SEO, security and SSL. Type the address, start the scan, and MonSite does the rest.
 
 BROKEN LINKS AND RESOURCES
 • Opens every page on the site and finds 404s and server errors
 • Lists images, scripts, CSS, fonts and files that fail to load
 • Catches corrupt images and addresses that return an error page instead
 • Checks whether external links still work
+• Reads sitemap and robots.txt, and checks fonts and images referenced in CSS
 
 PERFORMANCE
 • DNS, connect, TLS, time-to-first-byte and download times for every page
 • Slowest pages and slowest-loading resources
-• Warnings for oversized images and files
+• Compression, caching, HTTP/2 and render-blocking scripts
+• Oversized images and page weight
+
+ACCESSIBILITY (WCAG)
+• Images without alt text, links and buttons without names
+• Unlabeled form fields, page language, heading structure
+• Disabled zoom, untitled iframes and more
+
+SEO
+• Title and meta description checks, duplicate titles
+• Canonical, noindex, mobile viewport, social preview tags
+• Sitemap, robots.txt, orphan pages and soft 404s
 
 SECURITY
 • HTTPS usage and HTTP-to-HTTPS redirects
 • Security headers such as HSTS, CSP and clickjacking protection
 • Cookie flags, mixed content and forms submitted over plain HTTP
-• Server version disclosure
+• CSP and HSTS quality, Subresource Integrity for external scripts
+• Server version disclosure, security.txt
 • Optional: publicly exposed .git, .env and backup files
 
 SSL CERTIFICATE
 • Trust status, issuer, start and expiry dates
 • Days remaining, with a warning as expiry approaches
+• Key type and size
 
 HEALTH SCORE
-• A 0–100 score and A–F grade based on the issues found
+• An overall score and A–F grade, plus a separate score for each of five areas
 • Issues grouped by severity and category
 
 SCHEDULED MONITORING
 • Monitor your sites every minute, hour or day
 • Every check is compared with the previous one: new and resolved issues, newly broken and fixed resources, slower pages, certificate renewals
+• Uptime percentage, average response time and last downtime
+• Detects downtime when expected text is missing from the home page
 • Notifications when something changes
 • Trend charts for score, load time and issue count
 
@@ -203,7 +235,7 @@ Note: iOS decides when background checks run; while the app is open, checks run 
 
 **Keywords**
 ```
-website,monitor,uptime,ssl,certificate,broken link,checker,speed,security,headers,seo,404,audit
+website,monitor,uptime,ssl,certificate,broken link,checker,speed,security,seo,wcag,accessibility
 ```
 
 **Support URL** / **Marketing URL**: same as above.

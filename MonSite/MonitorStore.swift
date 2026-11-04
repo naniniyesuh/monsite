@@ -195,6 +195,7 @@ final class MonitorStore: ObservableObject {
         q.timeout = 10
         q.checkExternalLinks = false
         q.probeSensitivePaths = false
+        q.useSitemap = false
         return q
     }
 }
