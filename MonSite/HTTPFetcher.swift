@@ -50,8 +50,7 @@ final class HTTPFetcher: @unchecked Sendable {
     }
 
     /// Yalnızca ekran görüntüsü/tanıtım videosu için: istekleri yavaşlatır.
-    static let demoDelayNs: UInt64 = ProcessInfo.processInfo.arguments.contains("-MonSiteSlowDemo")
-        || ProcessInfo.processInfo.arguments.contains("-MonSiteDemoTour") ? 260_000_000 : 0
+    static let demoDelayNs: UInt64 = ProcessInfo.processInfo.arguments.contains("-MonSiteSlowDemo") ? 260_000_000 : 0
 
     private func request(_ url: URL, method: String, headers: [String: String]) -> URLRequest {
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: timeout)

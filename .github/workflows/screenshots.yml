@@ -38,22 +38,29 @@ jobs:
           BID=studio.alpp.monsite
           L="-AppleLanguages (tr) -AppleLocale tr_TR"
           shot() { sleep "$2"; xcrun simctl io "$UDID" screenshot "shots/$1.png"; }
-          fresh() { xcrun simctl terminate "$UDID" $BID || true; xcrun simctl uninstall "$UDID" $BID; xcrun simctl install "$UDID" build/sim/MonSite.app; }
+          # Her çekimden önce temiz kurulum + bir kez boş açılış (ilk açılış CI'da yavaş olabiliyor)
+          fresh() {
+            xcrun simctl terminate "$UDID" $BID || true
+            xcrun simctl uninstall "$UDID" $BID || true
+            xcrun simctl install "$UDID" build/sim/MonSite.app
+            xcrun simctl launch "$UDID" $BID $L; sleep 20
+            xcrun simctl terminate "$UDID" $BID || true; sleep 2
+          }
 
           # 1) Giriş ekranı, adres yazılmış
-          xcrun simctl launch "$UDID" $BID $L -MonSitePrefill $SITE; shot 01-giris 6
+          fresh; xcrun simctl launch "$UDID" $BID $L -MonSitePrefill $SITE; shot 01-giris 10
           # 2) Tarama sürerken (istekler yavaşlatılmış)
           fresh; xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan $SITE -MonSiteSlowDemo
-          shot 02-tarama-a 3; shot 02-tarama-b 1.5; shot 02-tarama-c 1.5
+          shot 02-tarama-a 6; shot 02-tarama-b 2; shot 02-tarama-c 2
           # 3) Rapor
-          fresh; xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan $SITE; shot 03-rapor 25
+          fresh; xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan $SITE; shot 03-rapor 35
           # 4) Gruplu sorun listesi (SEO alanı)
-          fresh; xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan $SITE -MonSiteOpenArea seo; shot 04-sorunlar 25
+          fresh; xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan $SITE -MonSiteOpenArea seo; shot 04-sorunlar 35
           # 5) İzleme ayrıntısı: çalışırlık ve eğilim grafiği
-          fresh; xcrun simctl launch "$UDID" $BID $L -MonSiteMonitorsTab -MonSiteDemoMonitor $SITE -MonSiteOpenMonitor; shot 05-izleme 45
+          fresh; xcrun simctl launch "$UDID" $BID $L -MonSiteMonitorsTab -MonSiteDemoMonitor $SITE -MonSiteOpenMonitor; shot 05-izleme 60
           # 6) Rapor, koyu mod
           fresh; xcrun simctl ui "$UDID" appearance dark
-          xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan $SITE; shot 06-rapor-koyu 25
+          xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan $SITE; shot 06-rapor-koyu 35
           xcrun simctl ui "$UDID" appearance light
 
           # Tanıtım videosu (App Review için)
@@ -62,7 +69,7 @@ jobs:
           REC=$!
           sleep 3
           xcrun simctl launch "$UDID" $BID $L -MonSiteDemoTour $SITE
-          sleep 50
+          sleep 60
           kill -INT $REC; wait $REC || true
           ls -la shots
 
