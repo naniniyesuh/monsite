@@ -9,7 +9,7 @@ on:
       sites:
         description: "Taranacak siteler (boşlukla ayrılmış)"
         required: false
-        default: "alpp.studio www.w3.org example.com"
+        default: "alpp.studio example.com www.w3.org"
 
 jobs:
   build:
@@ -49,7 +49,7 @@ jobs:
 
       - name: Gerçek sitelerde tarama
         continue-on-error: true
-        run: ./monsite-cli ${{ github.event.inputs.sites || 'alpp.studio www.w3.org example.com' }} --pages 25 --depth 2 2>&1 | tee scan.log
+        run: ./monsite-cli ${{ github.event.inputs.sites || 'alpp.studio example.com www.w3.org' }} --pages 25 --depth 2 2>&1 | tee scan.log
 
       - name: Kayıtlar
         if: always()

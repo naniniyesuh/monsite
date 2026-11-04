@@ -40,7 +40,7 @@ jobs:
           xcrun simctl launch "$UDID" $BID $L; shot 01-giris 6
           xcrun simctl terminate "$UDID" $BID
 
-          xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan www.w3.org; shot 02-tarama 8; shot 03-rapor 70
+          xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan alpp.studio; shot 02-tarama 3; shot 03-rapor 40
           xcrun simctl terminate "$UDID" $BID
 
           xcrun simctl launch "$UDID" $BID $L -MonSiteMonitorsTab -MonSiteDemoMonitor alpp.studio; shot 04-izleme 45
