@@ -144,7 +144,7 @@ final class MonitorStore: ObservableObject {
             try? data.write(to: fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         }
 
-        let run = MonitorRun(
+        var run = MonitorRun(
             id: runID,
             date: report.finishedAt,
             durationSec: report.durationSec,
@@ -158,6 +158,14 @@ final class MonitorStore: ObservableObject {
             certDays: report.certificate?.daysRemaining,
             reportFile: relPath,
             diff: diff)
+        if let home = report.pages.first {
+            run.homeOK = home.error == nil && (home.statusCode ?? 0) < 400
+                && !report.issues.contains { $0.title == "Beklenen içerik bulunamadı" }
+            run.homeMs = home.durationMs
+            run.homeTTFBMs = home.timing?.ttfbMs
+        } else {
+            run.homeOK = false
+        }
 
         // Kayıt sırasında izleme silinmiş/değişmiş olabilir; güncel halini al.
         guard var current = monitor(m.id) else {

@@ -28,11 +28,12 @@ final class SiteCrawler {
         var visited: Set<String> = [startURL.visitKey]
         var siteHosts: Set<String> = [startURL.siteHost]
         var resources: [String: ResourceRef] = [:]
+        var linkedKeys = Set<String>()
         var mainResponse: HTTPURLResponse?
         var mainURL = startURL
-        var level: [URL] = [startURL]
-        var depth = 0
+        var siteIssues: [Issue] = []
         var unscanned = 0
+        var robotsSkipped: [String] = []
 
         func register(_ url: URL, _ kind: ResourceKind, external: Bool, on page: String) {
             let key = url.absoluteString
@@ -44,8 +45,53 @@ final class SiteCrawler {
             }
         }
 
+        // 0) robots.txt ve sitemap
+        var robots = RobotsRules()
+        var sitemapSeeds: [URL] = []
+        var sitemapKeys = Set<String>()
+        if let root = startURL.siteRoot, !Task.isCancelled {
+            await progress(.phase("robots.txt ve sitemap okunuyor"))
+            if let robotsURL = URL(string: "/robots.txt", relativeTo: root)?.absoluteURL {
+                let r = await fetcher.fetchWithRetry(robotsURL)
+                let text = r.data.map { String(decoding: $0, as: UTF8.self) } ?? ""
+                if r.error == nil, r.statusCode == 200, !SecurityChecker.looksHTML(text) {
+                    robots = RobotsRules.parse(text, base: r.finalURL ?? robotsURL)
+                    if robots.blocksEverything {
+                        siteIssues.append(Issue(severity: .warning, category: .seo, title: "robots.txt tüm siteyi engelliyor",
+                                                detail: "“Disallow: /” kuralı arama motorlarının siteyi taramasını engelliyor.",
+                                                url: robotsURL.absoluteString))
+                    }
+                } else {
+                    siteIssues.append(Issue(severity: .info, category: .seo, title: "robots.txt yok",
+                                            detail: "Arama motorlarına hangi bölümlerin taranacağını söyleyen robots.txt dosyası bulunamadı.",
+                                            url: robotsURL.absoluteString))
+                }
+            }
+            if config.useSitemap {
+                let declared = !robots.sitemaps.isEmpty
+                let candidates = declared ? robots.sitemaps
+                    : [URL(string: "/sitemap.xml", relativeTo: root)?.absoluteURL].compactMap { $0 }
+                let sm = await SitemapLoader.load(candidates, declared: declared, fetcher: fetcher)
+                if sm.found {
+                    sitemapSeeds = sm.pageURLs.filter { $0.siteHost == startURL.siteHost }
+                    sitemapKeys = Set(sitemapSeeds.map(\.visitKey))
+                    await progress(.log("Sitemap: \(sm.pageURLs.count) adres"))
+                } else {
+                    siteIssues.append(Issue(severity: .info, category: .seo, title: "Sitemap bulunamadı",
+                                            detail: "sitemap.xml arama motorlarının tüm sayfaları bulmasına yardım eder.",
+                                            url: candidates.first?.absoluteString ?? root.absoluteString))
+                }
+                for b in sm.brokenSitemaps {
+                    siteIssues.append(Issue(severity: .warning, category: .seo, title: "Sitemap dosyası açılmıyor",
+                                            detail: "Bildirilen sitemap adresi okunamadı.", url: b))
+                }
+            }
+        }
+
         // 1) Sayfaları katman katman (BFS) tara
         await progress(.phase("Sayfalar taranıyor"))
+        var level: [URL] = [startURL]
+        var depth = 0
         while !level.isEmpty && !Task.isCancelled {
             let budget = config.maxPages - pages.count
             if budget <= 0 || depth > config.maxDepth {
@@ -66,6 +112,15 @@ final class SiteCrawler {
             })
 
             var next: [URL] = []
+            func enqueue(_ link: URL) {
+                guard visited.insert(link.visitKey).inserted else { return }
+                if config.respectRobots && !robots.isAllowed(link) {
+                    robotsSkipped.append(link.absoluteString)
+                    return
+                }
+                next.append(link)
+            }
+
             for case let o? in outcomes {
                 pages.append(o.page)
 
@@ -84,14 +139,21 @@ final class SiteCrawler {
                 }
                 for link in o.links {
                     if siteHosts.contains(link.siteHost) {
+                        linkedKeys.insert(link.visitKey)
                         if let kind = HTMLExtractor.fileKind(for: link) {
                             register(link, kind, external: false, on: o.page.url)
-                        } else if visited.insert(link.visitKey).inserted {
-                            next.append(link)
+                        } else {
+                            enqueue(link)
                         }
                     } else if config.checkExternalLinks {
                         register(link, .link, external: true, on: o.page.url)
                     }
+                }
+            }
+            // Bağlantı verilmemiş ama sitemap'te olan sayfalar ikinci katmanda taranır.
+            if depth == 0 {
+                for u in sitemapSeeds where siteHosts.contains(u.siteHost) && HTMLExtractor.fileKind(for: u) == nil {
+                    enqueue(u)
                 }
             }
             level = next
@@ -100,34 +162,62 @@ final class SiteCrawler {
 
         // Taranmış sayfalar kaynak listesine bir daha girmesin
         let pageKeys = Set(pages.map { URL(string: $0.url)?.visitKey ?? $0.url })
-        let refs = resources.values.filter { $0.external || !pageKeys.contains($0.url.visitKey) }
+        var refs = resources.values.filter { $0.external || !pageKeys.contains($0.url.visitKey) }
 
-        // 2) Resim, script, CSS, dosya ve bağlantıları kontrol et
+        // 2) Resim, script, CSS, dosya ve bağlantıları kontrol et (CSS içindeki font/resimler dahil)
         var resourceResults: [ResourceResult] = []
+        var checkedKeys = Set<String>()
+        var pass = 0
         if !Task.isCancelled && !refs.isEmpty {
             await progress(.phase("Kaynaklar kontrol ediliyor"))
-            let total = refs.count
-            let checked: [ResourceResult?] = await concurrentMap(Array(refs), limit: config.concurrency * 2, { ref in
+        }
+        while !refs.isEmpty && pass < 3 && !Task.isCancelled {
+            pass += 1
+            let batch = refs
+            let total = batch.count
+            checkedKeys.formUnion(batch.map(\.url.absoluteString))
+            let checked: [ResourceChecker.Outcome?] = await concurrentMap(batch, limit: config.concurrency * 2, { ref in
                 await ResourceChecker.check(ref, fetcher: fetcher)
             }, onEach: { done, _ in
                 await progress(.resources(done: done, total: total))
             })
-            resourceResults = checked.compactMap { $0 }
+            var nested: [String: ResourceRef] = [:]
+            for case let o? in checked {
+                resourceResults.append(o.result)
+                for r in o.cssResources where !checkedKeys.contains(r.url.absoluteString) {
+                    let key = r.url.absoluteString
+                    if var e = nested[key] {
+                        e.foundOn.insert(o.result.url)
+                        nested[key] = e
+                    } else {
+                        nested[key] = ResourceRef(url: r.url, kind: r.kind,
+                                                  external: !siteHosts.contains(r.url.siteHost), foundOn: [o.result.url])
+                    }
+                }
+            }
+            refs = Array(nested.values)
         }
 
         // 3) Güvenlik
-        var siteIssues: [Issue] = []
         if !Task.isCancelled {
             await progress(.phase("Güvenlik kontrolleri"))
             if let resp = mainResponse {
                 siteIssues += SecurityChecker.headerIssues(response: resp, url: mainURL)
             }
             siteIssues += await SecurityChecker.schemeIssues(finalURL: mainURL, fetcher: fetcher)
-            if config.probeSensitivePaths, let root = mainURL.siteRoot {
-                await progress(.log("Hassas dosyalar aranıyor…"))
-                siteIssues += await SecurityChecker.probeSensitivePaths(root: root, fetcher: fetcher) { done, total in
-                    await progress(.resources(done: done, total: total))
+            if let root = mainURL.siteRoot {
+                if let i = await SecurityChecker.securityTxtIssue(root: root, fetcher: fetcher) { siteIssues.append(i) }
+                if let i = await SecurityChecker.soft404Issue(root: root, fetcher: fetcher) { siteIssues.append(i) }
+                if config.probeSensitivePaths {
+                    await progress(.log("Hassas dosyalar aranıyor…"))
+                    siteIssues += await SecurityChecker.probeSensitivePaths(root: root, fetcher: fetcher) { done, total in
+                        await progress(.resources(done: done, total: total))
+                    }
                 }
+            }
+            if let t = pages.first?.timing, let v = t.tlsVersion, v == "TLS 1.0" || v == "TLS 1.1" {
+                siteIssues.append(Issue(severity: .error, category: .security, title: "Eski TLS sürümü",
+                                        detail: "Bağlantı \(v) ile kuruldu; TLS 1.2 veya 1.3 kullanılmalı.", url: mainURL.absoluteString))
             }
         }
 
@@ -145,6 +235,14 @@ final class SiteCrawler {
             }
         }
 
+        // 5) Site geneli değerlendirmeler
+        siteIssues += Self.siteWideIssues(pages: pages, resources: resourceResults, mainURL: mainURL,
+                                          sitemapKeys: sitemapKeys, linkedKeys: linkedKeys)
+        if !robotsSkipped.isEmpty {
+            siteIssues.append(Issue(severity: .info, category: .availability, title: "robots.txt nedeniyle taranmayan sayfalar",
+                                    detail: "\(robotsSkipped.count) adres robots.txt kuralları gereği atlandı. Ayarlardan bu kurala uymayı kapatabilirsiniz.",
+                                    url: robotsSkipped[0]))
+        }
         if unscanned > 0 {
             siteIssues.append(Issue(severity: .info, category: .availability,
                                     title: "Limit nedeniyle taranmayan sayfalar",
@@ -166,5 +264,113 @@ final class SiteCrawler {
                           resources: resourceResults.sorted { $0.url < $1.url },
                           certificate: cert,
                           issues: allIssues)
+    }
+
+    /// Birden çok sayfaya bakarak verilen kararlar: yinelenen başlıklar, sayfa ağırlığı, sıkıştırma, önbellek...
+    static func siteWideIssues(pages: [PageResult], resources: [ResourceResult], mainURL: URL,
+                               sitemapKeys: Set<String>, linkedKeys: Set<String>) -> [Issue] {
+        var issues: [Issue] = []
+        let okPages = pages.filter { $0.isHTML && $0.error == nil && ($0.statusCode ?? 0) < 300 }
+        func examples(_ urls: [String]) -> String {
+            let shown = urls.prefix(3).map(shortURL).joined(separator: ", ")
+            return urls.count > 3 ? "\(shown) …" : shown
+        }
+
+        // Yinelenen başlık ve açıklamalar
+        let byTitle = Dictionary(grouping: okPages.filter { $0.title != nil }, by: { $0.title! })
+        for (title, group) in byTitle.filter({ $0.value.count > 1 }).sorted(by: { $0.value.count > $1.value.count }).prefix(10) {
+            issues.append(Issue(severity: .warning, category: .seo, title: "Aynı başlığı kullanan sayfalar",
+                                detail: "\(group.count) sayfa “\(title)” başlığını kullanıyor: \(examples(group.map(\.url)))",
+                                url: group[0].url))
+        }
+        let byDesc = Dictionary(grouping: okPages.filter { !($0.metaDescription ?? "").isEmpty }, by: { $0.metaDescription! })
+        for (_, group) in byDesc.filter({ $0.value.count > 1 }).sorted(by: { $0.value.count > $1.value.count }).prefix(10) {
+            issues.append(Issue(severity: .info, category: .seo, title: "Aynı meta açıklamayı kullanan sayfalar",
+                                detail: "\(group.count) sayfa aynı açıklamayı kullanıyor: \(examples(group.map(\.url)))",
+                                url: group[0].url))
+        }
+
+        // Sitemap'te olup hiçbir sayfadan bağlantı verilmeyenler
+        let homeKey = mainURL.visitKey
+        let orphans = okPages.filter {
+            let k = URL(string: $0.url)?.visitKey ?? $0.url
+            return k != homeKey && sitemapKeys.contains(k) && !linkedKeys.contains(k)
+        }
+        if !orphans.isEmpty {
+            issues.append(Issue(severity: .info, category: .seo, title: "Bağlantı verilmeyen (yetim) sayfalar",
+                                detail: "\(orphans.count) sayfa sitemap'te var ama taranan hiçbir sayfadan bağlantı almıyor: \(examples(orphans.map(\.url)))",
+                                url: orphans[0].url))
+        }
+
+        // Sayfa ağırlığı ve istek sayısı
+        var bytesByPage: [String: (bytes: Int, count: Int)] = [:]
+        for r in resources where r.kind != .link && r.kind != .document && r.error == nil {
+            for p in r.foundOn {
+                var e = bytesByPage[p] ?? (0, 0)
+                e.bytes += r.bytes ?? 0
+                e.count += 1
+                bytesByPage[p] = e
+            }
+        }
+        var heavy: [String] = []
+        var manyRequests: [String] = []
+        for p in okPages {
+            let e = bytesByPage[p.url] ?? (0, 0)
+            if e.bytes + p.bytes > 3_000_000 { heavy.append(p.url) }
+            if e.count > 80 { manyRequests.append(p.url) }
+        }
+        if !heavy.isEmpty {
+            issues.append(Issue(severity: .warning, category: .performance, title: "Sayfa ağırlığı yüksek",
+                                detail: "\(heavy.count) sayfanın HTML, resim, script ve CSS toplamı 3 MB'ı aşıyor: \(examples(heavy))",
+                                url: heavy[0]))
+        }
+        if !manyRequests.isEmpty {
+            issues.append(Issue(severity: .info, category: .performance, title: "Çok fazla kaynak isteği",
+                                detail: "\(manyRequests.count) sayfa 80'den fazla dosya yüklüyor: \(examples(manyRequests))",
+                                url: manyRequests[0]))
+        }
+
+        // Sıkıştırma
+        let textKinds: Set<ResourceKind> = [.script, .stylesheet]
+        var uncompressed = resources.filter { r in
+            !r.external && r.error == nil && (r.statusCode ?? 0) < 300 && (r.bytes ?? 0) > 1400
+                && (textKinds.contains(r.kind) || (r.contentType?.contains("svg") ?? false))
+                && (r.contentEncoding ?? "").isEmpty
+        }.map(\.url)
+        uncompressed += okPages.filter { $0.bytes > 1400 && ($0.contentEncoding ?? "").isEmpty }.map(\.url)
+        if !uncompressed.isEmpty {
+            issues.append(Issue(severity: .warning, category: .performance, title: "Sıkıştırılmadan gönderilen dosyalar",
+                                detail: "\(uncompressed.count) HTML/CSS/JS dosyası gzip veya brotli olmadan gönderiliyor; boyut genelde %60–80 küçülür: \(examples(uncompressed))",
+                                url: uncompressed[0]))
+        }
+
+        // Önbellek
+        let staticKinds: Set<ResourceKind> = [.image, .script, .stylesheet, .font]
+        let uncached = resources.filter { r in
+            guard !r.external, r.error == nil, (r.statusCode ?? 0) < 300, staticKinds.contains(r.kind) else { return false }
+            let cc = r.cacheControl?.lowercased() ?? ""
+            if cc.contains("no-store") { return true }
+            return !cc.contains("max-age") && !(r.hasExpires ?? false)
+        }.map(\.url)
+        if !uncached.isEmpty {
+            issues.append(Issue(severity: .warning, category: .performance, title: "Önbellek süresi tanımlanmamış dosyalar",
+                                detail: "\(uncached.count) resim/CSS/JS/font dosyasında Cache-Control max-age veya Expires yok; her ziyarette yeniden indirilir: \(examples(uncached))",
+                                url: uncached[0]))
+        }
+
+        // Protokol
+        if let proto = pages.first?.timing?.httpProtocol?.lowercased(), proto == "http/1.1" || proto == "http/1.0" {
+            issues.append(Issue(severity: .info, category: .performance, title: "HTTP/2 kullanılmıyor",
+                                detail: "Sunucu \(proto.uppercased()) ile yanıt veriyor; HTTP/2 veya HTTP/3 birçok dosyayı paralel ve daha hızlı yükler.",
+                                url: mainURL.absoluteString))
+        }
+
+        // Ana sayfanın yönlendirme zinciri
+        if let first = pages.first, let t = first.timing, t.redirectCount >= 2 {
+            issues.append(Issue(severity: .info, category: .performance, title: "Ana sayfada yönlendirme zinciri",
+                                detail: "Ana sayfaya ulaşmak için \(t.redirectCount) yönlendirme gerekiyor; her biri yüklemeyi geciktirir.",
+                                url: first.url))
+        }
+        return issues
     }
 }

@@ -21,6 +21,8 @@ struct ExtractedHTML: Sendable {
 /// JavaScript ile sonradan eklenen içerikleri göremez.
 enum HTMLExtractor {
     private static let commentRE = try! NSRegularExpression(pattern: "<!--[\\s\\S]*?-->")
+    private static let scriptContentRE = try! NSRegularExpression(
+        pattern: "<script\\b([^>]*)>[\\s\\S]*?</script>", options: [.caseInsensitive])
     private static let tagRE = try! NSRegularExpression(
         pattern: "<(a|link|script|img|iframe|source|video|audio|track|embed|object|form|input|meta|html|base)\\b([^>]*)>",
         options: [.caseInsensitive])
@@ -28,6 +30,43 @@ enum HTMLExtractor {
         pattern: "([a-zA-Z_:][-a-zA-Z0-9_:.]*)\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s\"'>]+))")
     private static let titleRE = try! NSRegularExpression(
         pattern: "<title[^>]*>([\\s\\S]*?)</title>", options: [.caseInsensitive])
+    private static let styleBlockRE = try! NSRegularExpression(
+        pattern: "<style\\b[^>]*>([\\s\\S]*?)</style>", options: [.caseInsensitive])
+    private static let styleAttrRE = try! NSRegularExpression(
+        pattern: "\\sstyle\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)')", options: [.caseInsensitive])
+    private static let cssURLRE = try! NSRegularExpression(
+        pattern: "url\\(\\s*(?:\"([^\"]*)\"|'([^']*)'|([^)\\s]*))\\s*\\)", options: [.caseInsensitive])
+    private static let cssImportRE = try! NSRegularExpression(
+        pattern: "@import\\s+(?:\"([^\"]+)\"|'([^']+)')", options: [.caseInsensitive])
+    private static let fontExtensions: Set<String> = ["woff", "woff2", "ttf", "otf", "eot"]
+
+    /// CSS içindeki url(...) ve @import adreslerini bulur (font, arka plan resmi, iç içe CSS).
+    static func cssResources(_ css: String, base: URL) -> [FoundResource] {
+        let ns = css as NSString
+        let full = NSRange(location: 0, length: ns.length)
+        var out: [FoundResource] = []
+        var seen = Set<String>()
+        func add(_ raw: String, imported: Bool) {
+            guard let u = resolve(raw, base: base), seen.insert(u.absoluteString).inserted else { return }
+            let ext = u.pathExtension.lowercased()
+            let kind: ResourceKind = imported || ext == "css" ? .stylesheet
+                : fontExtensions.contains(ext) ? .font : .image
+            out.append(FoundResource(url: u, kind: kind))
+        }
+        for m in cssURLRE.matches(in: css, range: full) {
+            for i in 1...3 where m.range(at: i).location != NSNotFound {
+                add(ns.substring(with: m.range(at: i)), imported: false)
+                break
+            }
+        }
+        for m in cssImportRE.matches(in: css, range: full) {
+            for i in 1...2 where m.range(at: i).location != NSNotFound {
+                add(ns.substring(with: m.range(at: i)), imported: true)
+                break
+            }
+        }
+        return out
+    }
 
     private static let documentExtensions: Set<String> = [
         "pdf", "zip", "rar", "7z", "gz", "tar", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
@@ -52,8 +91,11 @@ enum HTMLExtractor {
         var out = ExtractedHTML()
         out.hasClosingHTML = raw.range(of: "</html>", options: .caseInsensitive) != nil
 
-        let html = commentRE.stringByReplacingMatches(
+        let noComments = commentRE.stringByReplacingMatches(
             in: raw, range: NSRange(raw.startIndex..., in: raw), withTemplate: "")
+        // Satır içi script içeriğindeki "<img ...>" gibi metinler kaynak sanılmasın; <script src> etiketi kalır.
+        let html = scriptContentRE.stringByReplacingMatches(
+            in: noComments, range: NSRange(noComments.startIndex..., in: noComments), withTemplate: "<script$1></script>")
         let ns = html as NSString
         let full = NSRange(location: 0, length: ns.length)
 
@@ -82,6 +124,21 @@ enum HTMLExtractor {
                 let candidate = part.trimmingCharacters(in: .whitespaces)
                     .split(separator: " ").first.map(String.init)
                 addRes(candidate, kind)
+            }
+        }
+
+        // <style> blokları ve style="" öznitelikleri içindeki url(...) kaynakları
+        var inlineCSS = ""
+        for m in styleBlockRE.matches(in: html, range: full) { inlineCSS += ns.substring(with: m.range(at: 1)) + "\n" }
+        for m in styleAttrRE.matches(in: html, range: full) {
+            for i in 1...2 where m.range(at: i).location != NSNotFound {
+                inlineCSS += ns.substring(with: m.range(at: i)) + "\n"
+                break
+            }
+        }
+        if !inlineCSS.isEmpty {
+            for r in cssResources(decodeEntities(inlineCSS), base: baseURL) where seenRes.insert(r).inserted {
+                out.resources.append(r)
             }
         }
 
@@ -145,7 +202,7 @@ enum HTMLExtractor {
         return out
     }
 
-    private static func attributes(_ s: String) -> [String: String] {
+    static func attributes(_ s: String) -> [String: String] {
         var dict: [String: String] = [:]
         let ns = s as NSString
         for m in attrRE.matches(in: s, range: NSRange(location: 0, length: ns.length)) {

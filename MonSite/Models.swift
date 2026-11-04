@@ -37,11 +37,13 @@ enum Severity: String, Codable, CaseIterable, Comparable, Sendable {
 }
 
 enum IssueCategory: String, Codable, CaseIterable, Sendable {
-    case availability, content, resource, performance, security, certificate
+    case availability, content, resource, performance, security, certificate, accessibility, seo
 
     var title: String {
         switch self {
-        case .availability: return "Erişilebilirlik"
+        case .accessibility: return "Erişilebilirlik (WCAG)"
+        case .seo: return "SEO"
+        case .availability: return "Erişim"
         case .content: return "İçerik / bütünlük"
         case .resource: return "Kaynaklar"
         case .performance: return "Performans"
@@ -52,6 +54,8 @@ enum IssueCategory: String, Codable, CaseIterable, Sendable {
 
     var systemImage: String {
         switch self {
+        case .accessibility: return "figure.wave"
+        case .seo: return "magnifyingglass"
         case .availability: return "network"
         case .content: return "doc.text"
         case .resource: return "photo.on.rectangle"
@@ -178,6 +182,11 @@ struct PageResult: Identifiable, Codable, Hashable, Sendable {
     let linkCount: Int
     let resourceCount: Int
     var issues: [Issue]
+    // 1.1 ile eklenenler (eski raporlarda yok)
+    var metaDescription: String?
+    var canonical: String?
+    var wordCount: Int?
+    var contentEncoding: String?
 }
 
 struct ResourceResult: Identifiable, Codable, Hashable, Sendable {
@@ -192,6 +201,9 @@ struct ResourceResult: Identifiable, Codable, Hashable, Sendable {
     let error: String?
     let corrupt: Bool
     let foundOn: [String]
+    var contentEncoding: String?
+    var cacheControl: String?
+    var hasExpires: Bool?
 
     var servedHTMLInstead: Bool {
         guard ([ResourceKind.image, .script, .stylesheet, .font] as [ResourceKind]).contains(kind) else { return false }
@@ -213,6 +225,9 @@ struct CertificateInfo: Codable, Sendable {
     let trusted: Bool
     let trustError: String?
     let fetchError: String?
+    var keyDescription: String?
+    var keyBits: Int?
+    var keyIsRSA: Bool?
 
     var daysRemaining: Int? {
         guard let notAfter else { return nil }
@@ -250,10 +265,34 @@ struct ScanReport: Codable, Sendable {
     }
 
     /// 0–100 arası genel sağlık puanı.
+    /// 0–100 arası genel sağlık puanı: alan puanlarının ağırlıklı ortalaması.
+    /// Kritik bir sorun varsa puan 59'u geçmez.
     var score: Int {
-        let penalty = min(Double(count(.critical)) * 15, 60)
-            + min(Double(count(.error)) * 4, 30)
-            + min(Double(count(.warning)) * 1, 15)
+        let total = ScoreArea.allCases.reduce(0.0) { $0 + Double(areaScore($1)) * $1.weight }
+        var result = Int(total.rounded())
+        if count(.critical) > 0 { result = min(result, 59) }
+        return max(0, min(100, result))
+    }
+
+    /// Bir alanın 0–100 puanı. Aynı başlıklı sorunlar (ör. 40 sayfada "alt metni yok")
+    /// bir kez sayılır, tekrar sayısı cezayı en fazla iki katına çıkarır.
+    func areaScore(_ area: ScoreArea) -> Int {
+        var groups: [String: (Severity, Int)] = [:]
+        for i in issues where area.categories.contains(i.category) {
+            let k = "\(i.severity.rawValue)|\(i.title)"
+            groups[k] = (i.severity, (groups[k]?.1 ?? 0) + 1)
+        }
+        var penalty = 0.0
+        for (sev, n) in groups.values {
+            let w: Double
+            switch sev {
+            case .critical: w = 30
+            case .error: w = 12
+            case .warning: w = 5
+            case .info: w = 1
+            }
+            penalty += w * min(1 + Double(n - 1) * 0.1, 2)
+        }
         return max(0, Int((100 - penalty).rounded()))
     }
 
@@ -282,6 +321,44 @@ struct ScanReport: Codable, Sendable {
     }
 }
 
+// MARK: - Puan alanları
+
+enum ScoreArea: String, CaseIterable, Identifiable, Sendable {
+    case links, performance, accessibility, seo, security
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .links: return "Bağlantılar"
+        case .performance: return "Performans"
+        case .accessibility: return "Erişilebilirlik"
+        case .seo: return "SEO"
+        case .security: return "Güvenlik"
+        }
+    }
+
+    var categories: Set<IssueCategory> {
+        switch self {
+        case .links: return [.availability, .resource, .content]
+        case .performance: return [.performance]
+        case .accessibility: return [.accessibility]
+        case .seo: return [.seo]
+        case .security: return [.security, .certificate]
+        }
+    }
+
+    var weight: Double {
+        switch self {
+        case .links: return 0.25
+        case .security: return 0.25
+        case .performance: return 0.20
+        case .accessibility: return 0.15
+        case .seo: return 0.15
+        }
+    }
+}
+
 // MARK: - Yapılandırma
 
 struct ScanConfig: Codable, Hashable, Sendable {
@@ -292,6 +369,33 @@ struct ScanConfig: Codable, Hashable, Sendable {
     var checkExternalLinks = true
     var probeSensitivePaths = false
     var slowPageMs = 3000
+    var respectRobots = true
+    var useSitemap = true
+    /// İzlemede ana sayfada bulunması gereken metin (boşsa kontrol edilmez).
+    var requiredText: String?
+
+    init() {}
+
+    enum CodingKeys: String, CodingKey {
+        case maxPages, maxDepth, concurrency, timeout, checkExternalLinks, probeSensitivePaths,
+             slowPageMs, respectRobots, useSitemap, requiredText
+    }
+
+    /// Eski sürümde kaydedilmiş ayarlar da okunabilsin diye eksik alanlar varsayılana düşer.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = ScanConfig()
+        maxPages = try c.decodeIfPresent(Int.self, forKey: .maxPages) ?? d.maxPages
+        maxDepth = try c.decodeIfPresent(Int.self, forKey: .maxDepth) ?? d.maxDepth
+        concurrency = try c.decodeIfPresent(Int.self, forKey: .concurrency) ?? d.concurrency
+        timeout = try c.decodeIfPresent(Double.self, forKey: .timeout) ?? d.timeout
+        checkExternalLinks = try c.decodeIfPresent(Bool.self, forKey: .checkExternalLinks) ?? d.checkExternalLinks
+        probeSensitivePaths = try c.decodeIfPresent(Bool.self, forKey: .probeSensitivePaths) ?? d.probeSensitivePaths
+        slowPageMs = try c.decodeIfPresent(Int.self, forKey: .slowPageMs) ?? d.slowPageMs
+        respectRobots = try c.decodeIfPresent(Bool.self, forKey: .respectRobots) ?? d.respectRobots
+        useSitemap = try c.decodeIfPresent(Bool.self, forKey: .useSitemap) ?? d.useSitemap
+        requiredText = try c.decodeIfPresent(String.self, forKey: .requiredText)
+    }
 }
 
 // MARK: - Biçimlendirme yardımcıları

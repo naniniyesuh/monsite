@@ -65,7 +65,19 @@ enum CertificateChecker {
             notAfter = validity.notAfter
         }
 
-        return CertificateInfo(host: host,
+        var keyDescription: String?
+        var keyBits: Int?
+        var keyIsRSA: Bool?
+        if let leaf = chain.first, let key = SecCertificateCopyKey(leaf),
+           let attrs = SecKeyCopyAttributes(key) as? [String: Any] {
+            keyBits = (attrs[kSecAttrKeySizeInBits as String] as? NSNumber)?.intValue
+            let type = attrs[kSecAttrKeyType as String] as? String
+            keyIsRSA = type == (kSecAttrKeyTypeRSA as String)
+            let name = keyIsRSA == true ? "RSA" : (type == (kSecAttrKeyTypeECSECPrimeRandom as String) ? "ECDSA" : "Diğer")
+            keyDescription = keyBits.map { "\(name) \($0) bit" } ?? name
+        }
+
+        var info = CertificateInfo(host: host,
                                subject: names.first,
                                issuer: names.count > 1 ? names[1] : nil,
                                chain: names,
@@ -74,6 +86,10 @@ enum CertificateChecker {
                                trusted: trusted,
                                trustError: trusted ? nil : trustError,
                                fetchError: trusted ? nil : fetchError)
+        info.keyDescription = keyDescription
+        info.keyBits = keyBits
+        info.keyIsRSA = keyIsRSA
+        return info
     }
 
     static func issues(for cert: CertificateInfo) -> [Issue] {
@@ -103,6 +119,13 @@ enum CertificateChecker {
             } else {
                 add(.info, "Sertifika geçerli", "\(days) gün kaldı — bitiş: \(endText)")
             }
+        }
+        if cert.keyIsRSA == true, let bits = cert.keyBits, bits < 2048 {
+            add(.error, "Zayıf sertifika anahtarı", "RSA \(bits) bit; en az 2048 bit olmalı.")
+        }
+        if let start = cert.notBefore, let end = cert.notAfter,
+           end.timeIntervalSince(start) > 398 * 86_400 {
+            add(.info, "Sertifika süresi çok uzun", "Geçerlilik süresi 398 günü aşıyor; tarayıcılar bu sertifikaları reddedebilir.")
         }
         if let start = cert.notBefore, start > Date() {
             add(.critical, "Sertifika henüz geçerli değil", "Başlangıç: \(df.string(from: start))")

@@ -42,6 +42,36 @@ struct MonitorRun: Identifiable, Codable, Hashable {
     let certDays: Int?
     let reportFile: String
     let diff: ScanDiff?
+    // 1.1: çalışırlık (uptime) istatistikleri için ana sayfa durumu
+    var homeOK: Bool?
+    var homeMs: Double?
+    var homeTTFBMs: Double?
+}
+
+/// Son kontrollerden hesaplanan çalışırlık özeti.
+struct UptimeStats {
+    let checks: Int
+    let up: Int
+    let avgMs: Double
+    let avgTTFBMs: Double?
+    let lastDown: Date?
+    let since: Date?
+
+    var percent: Double { checks == 0 ? 0 : Double(up) / Double(checks) * 100 }
+
+    init?(runs: [MonitorRun], limit: Int = 100) {
+        let list = runs.prefix(limit).filter { $0.homeOK != nil }
+        guard !list.isEmpty else { return nil }
+        checks = list.count
+        up = list.filter { $0.homeOK == true }.count
+        let ok = list.filter { $0.homeOK == true }
+        let ms = ok.compactMap(\.homeMs)
+        avgMs = ms.isEmpty ? 0 : ms.reduce(0, +) / Double(ms.count)
+        let tt = ok.compactMap(\.homeTTFBMs)
+        avgTTFBMs = tt.isEmpty ? nil : tt.reduce(0, +) / Double(tt.count)
+        lastDown = list.first { $0.homeOK == false }?.date
+        since = list.last?.date
+    }
 }
 
 enum MonitorInterval {

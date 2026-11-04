@@ -2,9 +2,14 @@ name: Build
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      sites:
+        description: "Taranacak siteler (boşlukla ayrılmış)"
+        required: false
+        default: "alpp.studio www.w3.org example.com"
 
 jobs:
   build:
@@ -18,7 +23,7 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_16.4.app || true
           xcodebuild -version
 
-      - name: Simülatör için derle
+      - name: Uygulamayı simülatör için derle
         run: |
           set -o pipefail
           xcodebuild build \
@@ -31,9 +36,26 @@ jobs:
             2>&1 | tee build.log | grep -E "error:|warning:|BUILD (SUCCEEDED|FAILED)" || true
           grep -q "BUILD SUCCEEDED" build.log
 
-      - name: Derleme kaydı
+      - name: Tarama motorunu komut satırı aracı olarak derle
+        run: |
+          swiftc -O -parse-as-library -o monsite-cli \
+            MonSite/Models.swift MonSite/HTTPFetcher.swift MonSite/HTMLExtractor.swift \
+            MonSite/PageInspector.swift MonSite/PageAnalyzer.swift MonSite/SecurityChecker.swift \
+            MonSite/CertificateChecker.swift MonSite/RobotsSitemap.swift MonSite/SiteCrawler.swift \
+            MonSite/Monitoring.swift Tools/cli/MonSiteCLI.swift
+
+      - name: Ayrıştırıcı testleri
+        run: ./monsite-cli --selftest
+
+      - name: Gerçek sitelerde tarama
+        continue-on-error: true
+        run: ./monsite-cli ${{ github.event.inputs.sites || 'alpp.studio www.w3.org example.com' }} --pages 25 --depth 2 2>&1 | tee scan.log
+
+      - name: Kayıtlar
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-log
-          path: build.log
+          name: logs
+          path: |
+            build.log
+            scan.log

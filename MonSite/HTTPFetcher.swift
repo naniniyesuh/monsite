@@ -75,6 +75,24 @@ final class HTTPFetcher: @unchecked Sendable {
         }
     }
 
+    /// Geçici hatalarda (zaman aşımı, bağlantı kopması, 429/502/503/504) bir kez daha dener.
+    /// İzlemede tek seferlik ağ aksaklıklarının "site çöktü" diye raporlanmasını önler.
+    func fetchWithRetry(_ url: URL, method: String = "GET") async -> FetchResult {
+        var r = await fetch(url, method: method)
+        guard !r.cancelled else { return r }
+        let transientCodes: Set<Int> = [429, 502, 503, 504]
+        let permanentError = r.error.map { $0.contains("DNS") || $0.contains("Sertifika") || $0.contains("yönlendirme") } ?? false
+        if (r.error != nil && !permanentError) || transientCodes.contains(r.statusCode ?? 0) {
+            var wait = 1.5
+            if r.statusCode == 429, let ra = r.header("Retry-After"), let sec = Double(ra) { wait = min(max(sec, 1), 5) }
+            try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+            if Task.isCancelled { return r }
+            let second = await fetch(url, method: method)
+            if !second.cancelled { r = second }
+        }
+        return r
+    }
+
     /// Sadece ilk `maxBytes` baytı okur (büyük dosyaları indirmeden kontrol etmek için).
     func fetchPrefix(_ url: URL, maxBytes: Int = 16_384) async -> FetchResult {
         let req = request(url, method: "GET", headers: [:])

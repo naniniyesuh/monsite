@@ -13,12 +13,34 @@ enum SecurityChecker {
         func h(_ name: String) -> String? { response.value(forHTTPHeaderField: name) }
         let https = url.scheme == "https"
 
-        if https && h("Strict-Transport-Security") == nil {
-            add(.warning, "HSTS başlığı yok", "Strict-Transport-Security, tarayıcıyı her zaman HTTPS kullanmaya zorlar.")
+        if https {
+            if let hsts = h("Strict-Transport-Security")?.lowercased() {
+                let maxAge = hsts.range(of: "max-age=").flatMap { r in
+                    Int(hsts[r.upperBound...].prefix { $0.isNumber })
+                } ?? 0
+                if maxAge < 15_552_000 {
+                    add(.info, "HSTS süresi kısa", "max-age=\(maxAge) sn; en az 6 ay (15552000) önerilir.")
+                }
+            } else {
+                add(.warning, "HSTS başlığı yok", "Strict-Transport-Security, tarayıcıyı her zaman HTTPS kullanmaya zorlar.")
+            }
         }
         let csp = h("Content-Security-Policy")
-        if csp == nil {
+        if let csp = csp?.lowercased() {
+            var weak: [String] = []
+            if csp.contains("'unsafe-inline'") && !csp.contains("nonce-") && !csp.contains("sha256-") { weak.append("'unsafe-inline'") }
+            if csp.contains("'unsafe-eval'") { weak.append("'unsafe-eval'") }
+            if csp.range(of: "(script-src|default-src)[^;]*\\s\\*(\\s|;|$)", options: .regularExpression) != nil { weak.append("joker (*) kaynak") }
+            if !weak.isEmpty {
+                add(.info, "CSP zayıf", "Politika şunlara izin veriyor: \(weak.joined(separator: ", ")); XSS koruması azalır.")
+            }
+        } else if h("Content-Security-Policy-Report-Only") != nil {
+            add(.info, "CSP yalnızca raporlama modunda", "Content-Security-Policy-Report-Only engelleme yapmaz.")
+        } else {
             add(.warning, "Content-Security-Policy (CSP) yok", "XSS saldırılarına karşı önemli bir savunma katmanı eksik.")
+        }
+        if h("Permissions-Policy") == nil {
+            add(.info, "Permissions-Policy yok", "Kamera, mikrofon, konum gibi tarayıcı özelliklerinin kullanımı sınırlanmamış.")
         }
         if h("X-Frame-Options") == nil && !(csp?.lowercased().contains("frame-ancestors") ?? false) {
             add(.warning, "Clickjacking koruması yok", "X-Frame-Options veya CSP frame-ancestors tanımlı değil; site başka sitelere gömülebilir.")
@@ -56,6 +78,30 @@ enum SecurityChecker {
             }
         }
         return issues
+    }
+
+    // MARK: security.txt ve soft 404
+
+    static func securityTxtIssue(root: URL, fetcher: HTTPFetcher) async -> Issue? {
+        guard let url = URL(string: "/.well-known/security.txt", relativeTo: root)?.absoluteURL else { return nil }
+        let r = await fetcher.fetchPrefix(url, maxBytes: 8192)
+        let text = r.data.map { String(decoding: $0, as: UTF8.self) } ?? ""
+        let ok = r.error == nil && r.statusCode == 200 && !looksHTML(text) && text.lowercased().contains("contact:")
+        if ok { return nil }
+        return Issue(severity: .info, category: .security, title: "security.txt yok",
+                     detail: "/.well-known/security.txt dosyası, güvenlik araştırmacılarının size nasıl ulaşacağını belirtir (RFC 9116).",
+                     url: url.absoluteString)
+    }
+
+    /// Var olmayan bir adres 404 yerine 200 dönüyorsa kırık bağlantılar ve arama motorları için sorun yaratır.
+    static func soft404Issue(root: URL, fetcher: HTTPFetcher) async -> Issue? {
+        let probe = "/monsite-olmayan-sayfa-\(UUID().uuidString.prefix(8).lowercased())"
+        guard let url = URL(string: probe, relativeTo: root)?.absoluteURL else { return nil }
+        let r = await fetcher.fetchPrefix(url, maxBytes: 4096)
+        guard r.error == nil, r.statusCode == 200 else { return nil }
+        return Issue(severity: .warning, category: .seo, title: "Olmayan sayfalar 200 dönüyor (soft 404)",
+                     detail: "Var olmayan bir adres HTTP 200 ile yanıt verdi. Kırık bağlantılar tespit edilemez ve arama motorları hata sayfalarını dizine ekleyebilir.",
+                     url: url.absoluteString)
     }
 
     // MARK: HTTP ↔ HTTPS

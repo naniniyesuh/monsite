@@ -1,5 +1,5 @@
 import Foundation
-import UIKit
+import ImageIO
 
 struct PageOutcome: @unchecked Sendable {
     let page: PageResult
@@ -11,7 +11,7 @@ struct PageOutcome: @unchecked Sendable {
 
 enum PageProcessor {
     static func process(url: URL, depth: Int, fetcher: HTTPFetcher, config: ScanConfig) async -> PageOutcome? {
-        let r = await fetcher.fetch(url)
+        let r = await fetcher.fetchWithRetry(url)
         if r.cancelled { return nil }
 
         let ct = r.header("Content-Type")
@@ -27,14 +27,29 @@ enum PageProcessor {
 
         var html: String?
         var extracted: ExtractedHTML?
+        var facts: PageFacts?
+        let final = r.finalURL ?? url
         if isHTML, code < 400, let data = r.data {
             let body = HTMLExtractor.decodeBody(data, contentType: ct)
             html = body
-            extracted = HTMLExtractor.extract(html: body, baseURL: r.finalURL ?? url)
+            extracted = HTMLExtractor.extract(html: body, baseURL: final)
+            facts = PageInspector.inspect(html: body, url: final)
         }
 
-        let issues = PageAnalyzer.analyze(url: url, finalURL: r.finalURL ?? url, fetch: r,
+        var issues = PageAnalyzer.analyze(url: url, finalURL: final, fetch: r,
                                           isHTML: isHTML, html: html, extracted: extracted, config: config)
+        if let facts, let html, !html.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            issues += PageInspector.issues(facts, url: url, isHome: depth == 0, xRobotsTag: r.header("X-Robots-Tag"))
+        }
+        // İzleme: ana sayfada beklenen metin var mı?
+        if depth == 0, let needle = config.requiredText?.trimmingCharacters(in: .whitespacesAndNewlines), !needle.isEmpty {
+            let found = html?.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+            if !found {
+                issues.append(Issue(severity: .critical, category: .availability, title: "Beklenen içerik bulunamadı",
+                                    detail: "Ana sayfada “\(needle)” metni yok. Sayfa açılıyor ama içerik değişmiş veya hata sayfası gösteriliyor olabilir.",
+                                    url: url.absoluteString))
+            }
+        }
         let page = PageResult(
             url: url.absoluteString,
             finalURL: (r.finalURL ?? url).absoluteString,
@@ -49,7 +64,11 @@ enum PageProcessor {
             error: r.error,
             linkCount: extracted?.links.count ?? 0,
             resourceCount: extracted?.resources.count ?? 0,
-            issues: issues)
+            issues: issues,
+            metaDescription: facts?.metaDescription,
+            canonical: facts?.canonical?.absoluteString,
+            wordCount: facts?.wordCount,
+            contentEncoding: r.header("Content-Encoding"))
         return PageOutcome(page: page,
                            links: extracted?.links ?? [],
                            resources: extracted?.resources ?? [],
@@ -122,15 +141,6 @@ enum PageAnalyzer {
         if !ex.hasClosingHTML {
             add(.warning, .content, "Sayfa eksik yüklenmiş olabilir", "</html> kapanış etiketi bulunamadı")
         }
-        if ex.title == nil {
-            add(.warning, .content, "Sayfa başlığı yok", "<title> etiketi eksik veya boş")
-        }
-        if !ex.hasViewport {
-            add(.info, .content, "Mobil viewport etiketi yok", "<meta name=\"viewport\"> eksik; sayfa mobilde küçük görünebilir")
-        }
-        if !ex.hasLang {
-            add(.info, .content, "Sayfa dili belirtilmemiş", "<html lang=\"tr\"> gibi bir dil özniteliği yok")
-        }
         if let sig = errorSignatures.first(where: { html.contains($0.0) }) {
             add(.error, .content, "Sayfada sunucu hata çıktısı var", "\(sig.1) — “\(sig.0)” ifadesi bulundu")
         }
@@ -176,11 +186,17 @@ struct ResourceRef: Sendable {
 enum ResourceChecker {
     private static let fullDownloadKinds: Set<ResourceKind> = [.image, .script, .stylesheet, .font]
 
-    static func check(_ ref: ResourceRef, fetcher: HTTPFetcher) async -> ResourceResult? {
+    struct Outcome: Sendable {
+        let result: ResourceResult
+        /// İndirilen CSS dosyasının içinde bulunan font, resim ve @import adresleri
+        let cssResources: [FoundResource]
+    }
+
+    static func check(_ ref: ResourceRef, fetcher: HTTPFetcher) async -> Outcome? {
         let downloadFully = fullDownloadKinds.contains(ref.kind) && !ref.external
         var r: FetchResult
         if downloadFully {
-            r = await fetcher.fetch(ref.url)
+            r = await fetcher.fetchWithRetry(ref.url)
         } else {
             r = await fetcher.fetch(ref.url, method: "HEAD")
             if r.cancelled { return nil }
@@ -201,14 +217,22 @@ enum ResourceChecker {
         }
 
         let ct = r.header("Content-Type")
+        let ok = (r.statusCode ?? 0) < 400 && r.error == nil
         var corrupt = false
-        if ref.kind == .image, downloadFully, let data = r.data, (r.statusCode ?? 0) < 400,
+        if ref.kind == .image, downloadFully, ok, let data = r.data,
            let lct = ct?.lowercased(),
            ["png", "jpeg", "jpg", "gif", "webp", "heic"].contains(where: { lct.contains($0) }) {
-            corrupt = data.isEmpty || UIImage(data: data) == nil
+            corrupt = !imageDecodes(data)
         }
 
-        return ResourceResult(
+        var css: [FoundResource] = []
+        if ref.kind == .stylesheet, downloadFully, ok, let data = r.data,
+           !(ct?.lowercased().contains("html") ?? false) {
+            let text = String(decoding: data, as: UTF8.self)
+            css = HTMLExtractor.cssResources(text, base: r.finalURL ?? ref.url)
+        }
+
+        var result = ResourceResult(
             url: ref.url.absoluteString,
             kind: ref.kind,
             external: ref.external,
@@ -219,6 +243,17 @@ enum ResourceChecker {
             error: r.error,
             corrupt: corrupt,
             foundOn: ref.foundOn.sorted())
+        result.contentEncoding = r.header("Content-Encoding")
+        result.cacheControl = r.header("Cache-Control")
+        result.hasExpires = r.header("Expires") != nil
+        return Outcome(result: result, cssResources: css)
+    }
+
+    /// Resmin gerçekten açılabildiğini ImageIO ile doğrular (UIKit gerektirmez).
+    static func imageDecodes(_ data: Data) -> Bool {
+        guard !data.isEmpty, let src = CGImageSourceCreateWithData(data as CFData, nil),
+              CGImageSourceGetCount(src) > 0 else { return false }
+        return CGImageSourceCreateImageAtIndex(src, 0, nil) != nil
     }
 
     static func issues(for res: [ResourceResult]) -> [Issue] {
