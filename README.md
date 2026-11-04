@@ -50,3 +50,7 @@ Arka plan yenilemesini simülatörde denemek için Xcode'da uygulamayı duraklat
 - CSS içindeki `url(...)` kaynakları takip edilmez.
 - Güvenlik kontrolleri pasif ve yüzeyseldir; bir sızma testinin yerini tutmaz.
 - Hassas dosya taramasını yalnızca size ait veya izinli olduğunuz sitelerde kullanın.
+
+## App Store
+
+Yayın adımları, mağaza metinleri ve inceleme notu için [APP_STORE.md](APP_STORE.md) dosyasına bakın.
