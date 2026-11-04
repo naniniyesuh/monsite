@@ -6,12 +6,15 @@ import UIKit
 struct ReportView: View {
     let report: ScanReport
     @State private var jsonURL: URL?
+    @State private var area: ScoreArea?
 
     var body: some View {
         List {
             Section {
                 ScoreHeader(report: report)
                     .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16))
+                AreaScoresRow(report: report) { area = $0 }
+                    .listRowInsets(EdgeInsets(top: 12, leading: 8, bottom: 12, trailing: 8))
             }
 
             Section {
@@ -124,6 +127,11 @@ struct ReportView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .navigationDestination(isPresented: Binding(get: { area != nil }, set: { if !$0 { area = nil } })) {
+            if let area {
+                IssuesView(title: area.title, issues: report.issues.filter { area.categories.contains($0.category) })
+            }
+        }
         .navigationTitle(report.host)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -145,6 +153,32 @@ struct ReportView: View {
 }
 
 // MARK: - Puan başlığı
+
+private struct AreaScoresRow: View {
+    let report: ScanReport
+    let onSelect: (ScoreArea) -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            ForEach(ScoreArea.allCases) { a in
+                Button { onSelect(a) } label: {
+                    VStack(spacing: 6) {
+                        ScoreRing(score: report.areaScore(a), grade: "", size: 46, lineWidth: 5)
+                        Text(a.title)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("\(a.title) puanı \(report.areaScore(a))")
+            }
+        }
+    }
+}
 
 struct ScoreRing: View {
     let score: Int
@@ -350,6 +384,7 @@ private struct CertificateSection: View {
                 }
                 if let s = cert.subject { LabeledContent("Sahibi", value: s) }
                 if let i = cert.issuer { LabeledContent("Veren", value: i) }
+                if let k = cert.keyDescription { LabeledContent("Anahtar", value: k) }
                 if let d = cert.notBefore { LabeledContent("Başlangıç", value: d.formatted(date: .long, time: .omitted)) }
                 if let d = cert.notAfter { LabeledContent("Bitiş", value: d.formatted(date: .long, time: .omitted)) }
                 if let days = cert.daysRemaining {
@@ -376,6 +411,21 @@ struct IssuesView: View {
     let issues: [Issue]
     @State private var query = ""
     @State private var category: IssueCategory?
+    @State private var grouped: Bool
+
+    init(title: String, issues: [Issue], grouped: Bool = true) {
+        self.title = title
+        self.issues = issues
+        _grouped = State(initialValue: grouped)
+    }
+
+    private struct IssueGroup: Identifiable {
+        let id: String
+        let severity: Severity
+        let category: IssueCategory
+        let title: String
+        let issues: [Issue]
+    }
 
     private var filtered: [Issue] {
         issues.filter { i in
@@ -386,18 +436,51 @@ struct IssuesView: View {
         }
     }
 
+    private var groups: [IssueGroup] {
+        let dict = Dictionary(grouping: filtered) { "\($0.severity.rawValue)|\($0.category.rawValue)|\($0.title)" }
+        return dict.map { k, v in IssueGroup(id: k, severity: v[0].severity, category: v[0].category, title: v[0].title, issues: v) }
+            .sorted { ($0.severity.rank, -$0.issues.count, $0.title) < ($1.severity.rank, -$1.issues.count, $1.title) }
+    }
+
     var body: some View {
         List {
             if filtered.isEmpty {
                 Label("Sorun yok", systemImage: "checkmark.seal.fill").foregroundStyle(.green)
             }
-            ForEach(filtered) { IssueRow(issue: $0) }
+            if grouped {
+                ForEach(groups) { g in
+                    if g.issues.count == 1 {
+                        IssueRow(issue: g.issues[0])
+                    } else {
+                        NavigationLink {
+                            IssuesView(title: g.title, issues: g.issues, grouped: false)
+                        } label: {
+                            HStack(alignment: .top, spacing: 10) {
+                                SeverityIcon(severity: g.severity)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(g.title).font(.subheadline.weight(.semibold))
+                                    Text("\(g.category.title) · \(g.issues.count) yerde")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                CountBadge(count: g.issues.count, tint: SeverityIcon(severity: g.severity).color)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+            } else {
+                ForEach(filtered) { IssueRow(issue: $0) }
+            }
         }
         .searchable(text: $query, prompt: "Ara")
         .navigationTitle(title)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
+                    Toggle(isOn: $grouped) {
+                        Label("Aynı sorunları grupla", systemImage: "square.stack.3d.up")
+                    }
                     Picker("Kategori", selection: $category) {
                         Text("Tüm kategoriler").tag(IssueCategory?.none)
                         ForEach(IssueCategory.allCases, id: \.self) { c in

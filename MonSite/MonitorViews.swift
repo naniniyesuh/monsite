@@ -221,9 +221,21 @@ struct MonitorEditView: View {
                         LabeledContent("Yavaş sayfa eşiği", value: formatMs(Double(draft.config.slowPageMs)))
                     }
                     Toggle("Dış bağlantıları kontrol et", isOn: $draft.config.checkExternalLinks)
+                    Toggle("robots.txt kurallarına uy", isOn: $draft.config.respectRobots)
+                    Toggle("Sitemap'teki sayfaları da tara", isOn: $draft.config.useSitemap)
                     ProbeToggle(isOn: $draft.config.probeSensitivePaths)
                 } header: {
                     Text("Kontrol kapsamı")
+                }
+
+                Section {
+                    TextField("Ör. Hoş geldiniz", text: Binding(
+                        get: { draft.config.requiredText ?? "" },
+                        set: { draft.config.requiredText = $0.isEmpty ? nil : $0 }))
+                } header: {
+                    Text("Beklenen içerik")
+                } footer: {
+                    Text("Ana sayfada bu metin bulunmazsa site çalışmıyor sayılır ve bildirim gelir. Sayfa açılıp hata mesajı gösterdiğinde de kesintiyi yakalar.")
                 }
 
                 Section {
@@ -326,6 +338,14 @@ struct MonitorDetailView: View {
                     set: { store.setEnabled(m.id, $0) }))
             }
 
+            if let up = UptimeStats(runs: m.runs) {
+                Section {
+                    UptimeCard(stats: up)
+                } header: {
+                    Text("Çalışırlık")
+                }
+            }
+
             if m.runs.count >= 2 {
                 Section {
                     Picker("Grafik", selection: $metric) {
@@ -386,6 +406,47 @@ struct MonitorDetailView: View {
         .sheet(isPresented: $editing) {
             MonitorEditView(existing: m)
         }
+    }
+}
+
+private struct UptimeCard: View {
+    let stats: UptimeStats
+
+    private var color: Color {
+        stats.percent >= 99.5 ? .green : stats.percent >= 95 ? .orange : .red
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(String(format: "%%%.1f", stats.percent))
+                    .font(.title.weight(.bold).monospacedDigit())
+                    .foregroundStyle(color)
+                Text("çalışırlık · son \(stats.checks) kontrol")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            HStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(formatMs(stats.avgMs)).font(.subheadline.weight(.semibold).monospacedDigit())
+                    Text("Ort. yanıt").font(.caption).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(stats.avgTTFBMs.map(formatMs) ?? "—").font(.subheadline.weight(.semibold).monospacedDigit())
+                    Text("Ort. ilk bayt").font(.caption).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(stats.lastDown.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "Yok")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(stats.lastDown == nil ? Color.green : Color.red)
+                    Text("Son kesinti").font(.caption).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 

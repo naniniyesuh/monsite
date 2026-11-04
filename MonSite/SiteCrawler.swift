@@ -354,7 +354,7 @@ final class SiteCrawler {
         }.map(\.url)
         if !uncached.isEmpty {
             issues.append(Issue(severity: .warning, category: .performance, title: "Önbellek süresi tanımlanmamış dosyalar",
-                                detail: "\(uncached.count) resim/CSS/JS/font dosyasında Cache-Control max-age veya Expires yok; her ziyarette yeniden indirilir: \(examples(uncached))",
+                                detail: "\(uncached.count) resim/CSS/JS/font dosyasında Cache-Control max-age veya Expires yok; tarayıcı her ziyarette dosyayı sunucuya yeniden sorar: \(examples(uncached))",
                                 url: uncached[0]))
         }
 
