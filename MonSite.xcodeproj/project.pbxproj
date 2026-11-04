@@ -23,6 +23,8 @@
 		AA0000000000000000000250 /* Monitoring.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000150 /* Monitoring.swift */; };
 		AA0000000000000000000251 /* MonitorStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000151 /* MonitorStore.swift */; };
 		AA0000000000000000000252 /* MonitorViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000152 /* MonitorViews.swift */; };
+		AA0000000000000000000253 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000153 /* AboutView.swift */; };
+		AA0000000000000000000305 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000304 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +46,8 @@
 		AA0000000000000000000150 /* Monitoring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Monitoring.swift; sourceTree = "<group>"; };
 		AA0000000000000000000151 /* MonitorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorStore.swift; sourceTree = "<group>"; };
 		AA0000000000000000000152 /* MonitorViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorViews.swift; sourceTree = "<group>"; };
+		AA0000000000000000000153 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
+		AA0000000000000000000304 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -83,7 +87,9 @@
 				AA0000000000000000000150 /* Monitoring.swift */,
 				AA0000000000000000000151 /* MonitorStore.swift */,
 				AA0000000000000000000152 /* MonitorViews.swift */,
+				AA0000000000000000000153 /* AboutView.swift */,
 				AA0000000000000000000300 /* Assets.xcassets */,
+				AA0000000000000000000304 /* PrivacyInfo.xcprivacy */,
 				AA0000000000000000000302 /* Info.plist */,
 			);
 			path = MonSite;
@@ -157,6 +163,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA0000000000000000000301 /* Assets.xcassets in Resources */,
+				AA0000000000000000000305 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -167,6 +174,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AA0000000000000000000253 /* AboutView.swift in Sources */,
 				AA0000000000000000000252 /* MonitorViews.swift in Sources */,
 				AA0000000000000000000251 /* MonitorStore.swift in Sources */,
 				AA0000000000000000000250 /* Monitoring.swift in Sources */,

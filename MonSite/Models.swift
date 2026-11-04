@@ -290,7 +290,7 @@ struct ScanConfig: Codable, Hashable, Sendable {
     var concurrency = 4
     var timeout: Double = 20
     var checkExternalLinks = true
-    var probeSensitivePaths = true
+    var probeSensitivePaths = false
     var slowPageMs = 3000
 }
 

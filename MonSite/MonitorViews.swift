@@ -221,7 +221,7 @@ struct MonitorEditView: View {
                         LabeledContent("Yavaş sayfa eşiği", value: formatMs(Double(draft.config.slowPageMs)))
                     }
                     Toggle("Dış bağlantıları kontrol et", isOn: $draft.config.checkExternalLinks)
-                    Toggle("Hassas dosya taraması", isOn: $draft.config.probeSensitivePaths)
+                    ProbeToggle(isOn: $draft.config.probeSensitivePaths)
                 } header: {
                     Text("Kontrol kapsamı")
                 }

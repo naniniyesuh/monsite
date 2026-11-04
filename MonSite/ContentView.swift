@@ -4,6 +4,7 @@ struct ContentView: View {
     @StateObject private var vm = ScanViewModel()
     @FocusState private var urlFocused: Bool
     @State private var showSettings = false
+    @State private var showAbout = false
     @State private var showLog = false
     @State private var watchURL: String?
     @EnvironmentObject private var monitors: MonitorStore
@@ -52,8 +53,15 @@ struct ContentView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            Button { showAbout = true } label: {
+                Image(systemName: "info.circle")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityLabel("Hakkında")
         }
         .padding(.top, 12)
+        .sheet(isPresented: $showAbout) { AboutView() }
     }
 
     // MARK: Adres girişi
@@ -269,7 +277,7 @@ struct ContentView: View {
                         .font(.subheadline)
                         .padding(.vertical, 10)
                     Divider()
-                    Toggle("Hassas dosya taraması", isOn: $vm.config.probeSensitivePaths)
+                    ProbeToggle(isOn: $vm.config.probeSensitivePaths)
                         .font(.subheadline)
                         .padding(.vertical, 10)
                     Text("Hassas dosya taraması .git, .env ve yedek dosyaları gibi yaygın açıkları arar. Yalnızca size ait veya test izniniz olan sitelerde kullanın.")
@@ -311,6 +319,27 @@ struct ContentView: View {
 }
 
 // MARK: - Bileşenler
+
+/// Hassas dosya taramasını açmadan önce site sahipliğini onaylatır.
+struct ProbeToggle: View {
+    @Binding var isOn: Bool
+    @State private var confirming = false
+
+    var body: some View {
+        Toggle("Hassas dosya taraması", isOn: Binding(
+            get: { isOn },
+            set: { newValue in
+                if newValue { confirming = true } else { isOn = false }
+            }))
+            .font(.subheadline)
+            .confirmationDialog("Hassas dosya taraması", isPresented: $confirming, titleVisibility: .visible) {
+                Button("Bu siteyi yönetiyorum, aç") { isOn = true }
+                Button("Vazgeç", role: .cancel) {}
+            } message: {
+                Text("Bu tarama .git, .env ve yedek dosyaları gibi herkese açık kalmış hassas dosyaları arar. Yalnızca size ait veya test izniniz olan sitelerde kullanın.")
+            }
+    }
+}
 
 private struct WatchTarget: Identifiable {
     let url: String
