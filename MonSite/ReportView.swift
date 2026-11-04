@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import UIKit
 
 // MARK: - Rapor ana ekranı
@@ -127,6 +128,7 @@ struct ReportView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .onReceive(DemoDirector.shared.$area.dropFirst()) { area = $0 }
         .navigationDestination(isPresented: Binding(get: { area != nil }, set: { if !$0 { area = nil } })) {
             if let area {
                 IssuesView(title: area.title, issues: report.issues.filter { area.categories.contains($0.category) })

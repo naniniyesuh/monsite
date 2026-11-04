@@ -296,15 +296,13 @@ Contact: help@alpp.studio
 
 ## 6. Ekran görüntüleri
 
-**Gerekli boyutlar**
+**Gerekli boyut**
 
-- **iPhone 6.9"**: 1320 × 2868 (zorunlu). Simülatörde **iPhone 16 Pro Max** kullanın.
-- **iPad 13"**: 2064 × 2752. Uygulama iPad'i de desteklediği için zorunlu. Simülatörde **iPad Pro 13-inch (M4)** kullanın.
-  - iPad ile uğraşmak istemezseniz: Xcode → MonSite hedefi → **General** → **Supported Destinations** kısmından iPad'i kaldırın. O zaman iPad görüntüsü istenmez.
+- **iPhone 6.9"**: 1320 × 2868. Uygulama yalnızca iPhone'u desteklediği için iPad görüntüsü gerekmiyor.
 
-Her biri için en az 1, en fazla 10 görüntü yükleyebilirsiniz; 5 tane idealdir.
+Hazır görüntüler ve App Review için tanıtım videosu, her `v1.1` push'unda GitHub Actions tarafından simülatörde otomatik çekilip `screenshots` dalına konuyor: https://github.com/naniniyesuh/monsite/tree/screenshots
 
-**Nasıl alınır**
+**Elle almak isterseniz**
 
 Simülatörde uygulamayı çalıştırın, ekranı hazırlayın ve **⌘S** tuşuna basın. Görüntü masaüstüne doğru boyutta kaydedilir.
 

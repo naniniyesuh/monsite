@@ -49,6 +49,10 @@ final class HTTPFetcher: @unchecked Sendable {
         session = URLSession(configuration: c)
     }
 
+    /// Yalnızca ekran görüntüsü/tanıtım videosu için: istekleri yavaşlatır.
+    static let demoDelayNs: UInt64 = ProcessInfo.processInfo.arguments.contains("-MonSiteSlowDemo")
+        || ProcessInfo.processInfo.arguments.contains("-MonSiteDemoTour") ? 260_000_000 : 0
+
     private func request(_ url: URL, method: String, headers: [String: String]) -> URLRequest {
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: timeout)
         req.httpMethod = method
@@ -58,6 +62,7 @@ final class HTTPFetcher: @unchecked Sendable {
 
     /// Tam istek: gövdenin tamamını indirir.
     func fetch(_ url: URL, method: String = "GET", headers: [String: String] = [:]) async -> FetchResult {
+        if Self.demoDelayNs > 0 { try? await Task.sleep(nanoseconds: Self.demoDelayNs) }
         let req = request(url, method: method, headers: headers)
         let delegate = MetricsDelegate()
         let start = CFAbsoluteTimeGetCurrent()
@@ -95,6 +100,7 @@ final class HTTPFetcher: @unchecked Sendable {
 
     /// Sadece ilk `maxBytes` baytı okur (büyük dosyaları indirmeden kontrol etmek için).
     func fetchPrefix(_ url: URL, maxBytes: Int = 16_384) async -> FetchResult {
+        if Self.demoDelayNs > 0 { try? await Task.sleep(nanoseconds: Self.demoDelayNs) }
         let req = request(url, method: "GET", headers: [:])
         let delegate = MetricsDelegate()
         let start = CFAbsoluteTimeGetCurrent()

@@ -6,6 +6,7 @@ import Charts
 
 struct MonitorsView: View {
     @EnvironmentObject private var store: MonitorStore
+    @ObservedObject private var demo = DemoDirector.shared
     @State private var showAdd = false
 
     var body: some View {
@@ -70,6 +71,9 @@ struct MonitorsView: View {
                 }
             }
             .navigationTitle("İzleme")
+            .navigationDestination(isPresented: $demo.showMonitor) {
+                if let first = store.monitors.first { MonitorDetailView(monitorID: first.id) }
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { showAdd = true } label: { Image(systemName: "plus") }

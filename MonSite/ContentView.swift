@@ -31,10 +31,25 @@ struct ContentView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .task {
+                if let url = LaunchOptions.prefillURL, vm.urlText.isEmpty { vm.urlText = url }
                 if let url = LaunchOptions.autoScanURL, vm.report == nil, !vm.isRunning {
-                    vm.urlText = url
+                    if LaunchOptions.tourURL != nil {
+                        // Tanıtım videosu: adres harf harf yazılır
+                        try? await Task.sleep(nanoseconds: 1_200_000_000)
+                        vm.urlText = ""
+                        for ch in url {
+                            vm.urlText.append(ch)
+                            try? await Task.sleep(nanoseconds: 110_000_000)
+                        }
+                        try? await Task.sleep(nanoseconds: 700_000_000)
+                    } else {
+                        vm.urlText = url
+                    }
                     vm.start()
                 }
+            }
+            .onChange(of: vm.showReport) { shown in
+                if shown { DemoDirector.shared.reportReady = true }
             }
             .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)

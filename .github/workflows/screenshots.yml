@@ -11,7 +11,7 @@ permissions:
 jobs:
   shots:
     runs-on: macos-15
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -23,10 +23,11 @@ jobs:
             -configuration Debug CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=NO \
             CONFIGURATION_BUILD_DIR="$PWD/build/sim" 2>&1 | tail -3
 
-      - name: Simülatörde ekran görüntüleri
+      - name: Simülatörde ekran görüntüleri ve tanıtım videosu
         run: |
           set -x
           mkdir -p shots
+          SITE=alpp.studio
           RUNTIME=$(xcrun simctl list runtimes -j | python3 -c "import sys,json; r=[x for x in json.load(sys.stdin)['runtimes'] if x['platform']=='iOS' and x['isAvailable']]; print(r[-1]['identifier'])")
           UDID=$(xcrun simctl create shot "iPhone 16 Pro Max" "$RUNTIME")
           xcrun simctl boot "$UDID"
@@ -36,18 +37,32 @@ jobs:
           BID=studio.alpp.monsite
           L="-AppleLanguages (tr) -AppleLocale tr_TR"
           shot() { sleep "$2"; xcrun simctl io "$UDID" screenshot "shots/$1.png"; }
+          fresh() { xcrun simctl terminate "$UDID" $BID || true; xcrun simctl uninstall "$UDID" $BID; xcrun simctl install "$UDID" build/sim/MonSite.app; }
 
-          xcrun simctl launch "$UDID" $BID $L; shot 01-giris 6
-          xcrun simctl terminate "$UDID" $BID
+          # 1) Giriş ekranı, adres yazılmış
+          xcrun simctl launch "$UDID" $BID $L -MonSitePrefill $SITE; shot 01-giris 6
+          # 2) Tarama sürerken (istekler yavaşlatılmış)
+          fresh; xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan $SITE -MonSiteSlowDemo
+          shot 02-tarama-a 3; shot 02-tarama-b 1.5; shot 02-tarama-c 1.5
+          # 3) Rapor
+          fresh; xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan $SITE; shot 03-rapor 25
+          # 4) Gruplu sorun listesi (SEO alanı)
+          fresh; xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan $SITE -MonSiteOpenArea seo; shot 04-sorunlar 25
+          # 5) İzleme ayrıntısı: çalışırlık ve eğilim grafiği
+          fresh; xcrun simctl launch "$UDID" $BID $L -MonSiteMonitorsTab -MonSiteDemoMonitor $SITE -MonSiteOpenMonitor; shot 05-izleme 45
+          # 6) Rapor, koyu mod
+          fresh; xcrun simctl ui "$UDID" appearance dark
+          xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan $SITE; shot 06-rapor-koyu 25
+          xcrun simctl ui "$UDID" appearance light
 
-          xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan alpp.studio; shot 02-tarama 3; shot 03-rapor 40
-          xcrun simctl terminate "$UDID" $BID
-
-          xcrun simctl launch "$UDID" $BID $L -MonSiteMonitorsTab -MonSiteDemoMonitor alpp.studio; shot 04-izleme 45
-          xcrun simctl terminate "$UDID" $BID
-
-          xcrun simctl ui "$UDID" appearance dark
-          xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan alpp.studio; shot 05-rapor-koyu 30
+          # Tanıtım videosu (App Review için)
+          fresh
+          xcrun simctl io "$UDID" recordVideo --codec=h264 --force shots/MonSite-demo.mp4 &
+          REC=$!
+          sleep 3
+          xcrun simctl launch "$UDID" $BID $L -MonSiteDemoTour $SITE
+          sleep 50
+          kill -INT $REC; wait $REC || true
           ls -la shots
 
       - name: Görüntüleri screenshots dalına gönder
@@ -56,6 +71,6 @@ jobs:
           git init -q -b screenshots
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
-          git add *.png
-          git commit -q -m "Ekran görüntüleri ${GITHUB_SHA::7}"
+          git add -A
+          git commit -q -m "Ekran görüntüleri ve tanıtım videosu ${GITHUB_SHA::7}"
           git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" screenshots
