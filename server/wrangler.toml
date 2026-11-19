@@ -1,0 +1,32 @@
+name = "upsite-api"
+main = "src/index.ts"
+compatibility_date = "2025-10-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+# Her 15 dakikada bir (saat başı, :15, :30, :45)
+[triggers]
+crons = ["*/15 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "upsite"
+# GitHub Actions dağıtımı bu değeri ilk kurulumda gerçek kimlikle değiştirir.
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+# Kontrolleri gruplara bölüp paralel çalıştırmak için Worker kendini çağırır.
+[[services]]
+binding = "SELF"
+service = "upsite-api"
+
+[vars]
+APNS_TOPIC = "studio.alpp.monsite"
+MAX_SITES_PER_DEVICE = "50"
+MAX_DEVICES = "500"
+
+# Gizli değerler (wrangler secret put ile):
+#   APNS_KEY      .p8 dosyasının içeriği
+#   APNS_KEY_ID   Anahtar kimliği (10 karakter)
+#   APNS_TEAM_ID  Apple geliştirici takım kimliği
+#   INTERNAL_KEY  Worker'ın kendini çağırırken kullandığı rastgele anahtar

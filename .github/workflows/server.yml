@@ -1,0 +1,103 @@
+name: Server
+
+on:
+  push:
+    paths: ["server/**", ".github/workflows/server.yml"]
+  pull_request:
+    paths: ["server/**"]
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Cloudflare'a dağıt"
+        type: boolean
+        default: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Testler
+        run: npm test
+      - name: Tip denetimi
+        run: npm run typecheck
+      - name: Paketleme (dağıtmadan)
+        run: npx wrangler deploy --dry-run --outdir dist
+
+  deploy:
+    needs: test
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+
+      - name: Gerekli gizli değerler var mı
+        env:
+          APNS_KEY: ${{ secrets.APNS_KEY }}
+          APNS_KEY_ID: ${{ secrets.APNS_KEY_ID }}
+          APNS_TEAM_ID: ${{ secrets.APNS_TEAM_ID }}
+        run: |
+          missing=""
+          for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID APNS_KEY APNS_KEY_ID APNS_TEAM_ID; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then echo "::error::Eksik GitHub secret:$missing"; exit 1; fi
+
+      - name: D1 veritabanı (yoksa oluştur)
+        run: |
+          set -euo pipefail
+          ID=$(npx wrangler d1 list --json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const l=JSON.parse(s);const d=l.find(x=>x.name==='upsite');process.stdout.write(d?d.uuid:'')})")
+          if [ -z "$ID" ]; then
+            npx wrangler d1 create upsite
+            ID=$(npx wrangler d1 list --json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const l=JSON.parse(s);process.stdout.write(l.find(x=>x.name==='upsite').uuid)})")
+          fi
+          sed -i "s/^database_id = .*/database_id = \"$ID\"/" wrangler.toml
+          echo "D1: $ID"
+          npx wrangler d1 migrations apply upsite --remote
+
+      - name: İlk dağıtım (kendini çağırma bağlantısı olmadan)
+        run: |
+          set -euo pipefail
+          # Worker ilk kez oluşturuluyorsa kendine bağlantı henüz kurulamaz; önce onsuz dağıt.
+          awk 'BEGIN{skip=0} /^\[\[services\]\]/{skip=1;next} skip && /^\[/{skip=0} !skip' wrangler.toml > wrangler.bootstrap.toml
+          npx wrangler deploy -c wrangler.bootstrap.toml
+
+      - name: Gizli değerleri yükle
+        env:
+          APNS_KEY: ${{ secrets.APNS_KEY }}
+          APNS_KEY_ID: ${{ secrets.APNS_KEY_ID }}
+          APNS_TEAM_ID: ${{ secrets.APNS_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$APNS_KEY" | npx wrangler secret put APNS_KEY
+          printf '%s' "$APNS_KEY_ID" | npx wrangler secret put APNS_KEY_ID
+          printf '%s' "$APNS_TEAM_ID" | npx wrangler secret put APNS_TEAM_ID
+          openssl rand -hex 24 | tr -d '\n' | npx wrangler secret put INTERNAL_KEY
+
+      - name: Dağıt ve sağlık kontrolü
+        run: |
+          set -euo pipefail
+          npx wrangler deploy 2>&1 | tee deploy.log
+          URL=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1 || true)
+          if [ -n "$URL" ]; then
+            echo "### UpSite sunucusu: $URL" >> "$GITHUB_STEP_SUMMARY"
+            sleep 5
+            curl -fsS "$URL/v1/health" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
