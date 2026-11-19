@@ -2,8 +2,6 @@ name: Screenshots
 
 on:
   workflow_dispatch:
-  push:
-    branches: ["v1.1"]
 
 permissions:
   contents: write
@@ -20,57 +18,37 @@ jobs:
         run: |
           sudo xcode-select -s /Applications/Xcode_16.4.app || true
           set -o pipefail
-          xcodebuild build -project MonSite.xcodeproj -target MonSite -sdk iphonesimulator \
+          xcodebuild build -project UpSite.xcodeproj -target UpSite -sdk iphonesimulator \
             -configuration Debug CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=NO \
             CONFIGURATION_BUILD_DIR="$PWD/build/sim" 2>&1 | tail -3
 
-      - name: Simülatörde ekran görüntüleri ve tanıtım videosu
+      - name: Simülatörde ekran görüntüleri
         run: |
           set -x
           mkdir -p shots
-          SITE=alpp.studio
           RUNTIME=$(xcrun simctl list runtimes -j | python3 -c "import sys,json; r=[x for x in json.load(sys.stdin)['runtimes'] if x['platform']=='iOS' and x['isAvailable']]; print(r[-1]['identifier'])")
           UDID=$(xcrun simctl create shot "iPhone 16 Pro Max" "$RUNTIME")
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
           xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 --dataNetwork wifi
-          xcrun simctl install "$UDID" build/sim/MonSite.app
+          xcrun simctl ui "$UDID" appearance dark
+          xcrun simctl install "$UDID" build/sim/UpSite.app
           BID=studio.alpp.monsite
-          L="-AppleLanguages (tr) -AppleLocale tr_TR"
-          shot() { sleep "$2"; xcrun simctl io "$UDID" screenshot "shots/$1.png"; }
-          # Her çekimden önce temiz kurulum + bir kez boş açılış (ilk açılış CI'da yavaş olabiliyor)
-          fresh() {
-            xcrun simctl terminate "$UDID" $BID || true
-            xcrun simctl uninstall "$UDID" $BID || true
-            xcrun simctl install "$UDID" build/sim/MonSite.app
-            xcrun simctl launch "$UDID" $BID $L; sleep 20
-            xcrun simctl terminate "$UDID" $BID || true; sleep 2
+          # İlk açılış CI'da yavaş olabiliyor
+          xcrun simctl launch "$UDID" $BID -UpSiteDemo; sleep 20
+          run() { # dil ad süre argümanlar...
+            local lang=$1 name=$2 wait=$3; shift 3
+            xcrun simctl terminate "$UDID" $BID || true; sleep 1
+            xcrun simctl launch "$UDID" $BID -UpSiteDemo -language $lang -AppleLanguages "($lang)" "$@"
+            sleep "$wait"
+            xcrun simctl io "$UDID" screenshot "shots/$lang-$name.png"
           }
-
-          # 1) Giriş ekranı, adres yazılmış
-          fresh; xcrun simctl launch "$UDID" $BID $L -MonSitePrefill $SITE; shot 01-giris 10
-          # 2) Tarama sürerken (istekler yavaşlatılmış)
-          fresh; xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan $SITE -MonSiteSlowDemo
-          shot 02-tarama-a 6; shot 02-tarama-b 2; shot 02-tarama-c 2
-          # 3) Rapor
-          fresh; xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan $SITE; shot 03-rapor 35
-          # 4) Gruplu sorun listesi (SEO alanı)
-          fresh; xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan $SITE -MonSiteOpenArea seo; shot 04-sorunlar 35
-          # 5) İzleme ayrıntısı: çalışırlık ve eğilim grafiği
-          fresh; xcrun simctl launch "$UDID" $BID $L -MonSiteMonitorsTab -MonSiteDemoMonitor $SITE -MonSiteOpenMonitor; shot 05-izleme 60
-          # 6) Rapor, koyu mod
-          fresh; xcrun simctl ui "$UDID" appearance dark
-          xcrun simctl launch "$UDID" $BID $L -MonSiteAutoScan $SITE; shot 06-rapor-koyu 35
-          xcrun simctl ui "$UDID" appearance light
-
-          # Tanıtım videosu (App Review için)
-          fresh
-          xcrun simctl io "$UDID" recordVideo --codec=h264 --force shots/MonSite-demo.mp4 &
-          REC=$!
-          sleep 3
-          xcrun simctl launch "$UDID" $BID $L -MonSiteDemoTour $SITE
-          sleep 60
-          kill -INT $REC; wait $REC || true
+          for lang in tr en; do
+            run $lang 01-siteler 8
+            run $lang 02-ayrinti 8 -UpSiteOpenSite d1
+            run $lang 03-sertifikalar 8 -UpSiteTab certs
+            run $lang 04-ayarlar 8 -UpSiteTab settings
+          done
           ls -la shots
 
       - name: Görüntüleri screenshots dalına gönder
@@ -80,5 +58,5 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git add -A
-          git commit -q -m "Ekran görüntüleri ve tanıtım videosu ${GITHUB_SHA::7}"
+          git commit -q -m "UpSite ekran görüntüleri ${GITHUB_SHA::7}"
           git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" screenshots
