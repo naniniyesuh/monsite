@@ -1,64 +1,52 @@
-# MonSite — App Store yayın rehberi
+# UpSite 2.0 — App Store yayın rehberi
 
-Bu dosya, MonSite'ı App Store'a göndermek için gereken her şeyi içerir: kontrol listesi, App Store Connect'e yapıştırılacak metinler, gizlilik ve yaş derecelendirmesi cevapları, inceleme notu ve ekran görüntüsü planı.
+UpSite, App Store'daki MonSite uygulamasının yeni sürümüdür (aynı bundle ID: `studio.alpp.monsite`). Bu dosyada gönderim adımları, App Store Connect'e yapıştırılacak metinler, gizlilik ve yaş derecelendirmesi cevapları, inceleme notu ve ekran görüntüleri var.
 
 Projede hazır olanlar:
 
-- Bundle ID `studio.alpp.monsite`, sürüm 1.0 (1)
-- 1024×1024 uygulama simgesi (saydamlık yok)
-- Gizlilik manifesti (`PrivacyInfo.xcprivacy`): veri toplama yok, takip yok
-- Şifreleme beyanı (`ITSAppUsesNonExemptEncryption = NO`); her yüklemede export compliance sorusu çıkmaz
-- Arka plan yenileme (`fetch`) ve görev kimliği `studio.alpp.monsite.refresh`
-- Hassas dosya taraması varsayılan olarak kapalı; açarken site sahipliği onayı isteniyor
-- Hakkında ekranı: gizlilik politikası ve destek bağlantıları
-- Gizlilik ve destek sayfaları: https://alpp.studio/monsite/ (ayrı `alpp.studio` deposunda)
-- GitHub Actions derlemesi: her push'ta Xcode 16.4 ile derleniyor
+- Sürüm 2.0 (3), yalnızca iPhone, iOS 16.0+
+- Yeni simge (logo A), 1024×1024, saydamlık yok
+- Push Notifications yetkisi (`aps-environment`); arşivlerken Xcode üretim ortamına çevirir
+- Gizlilik manifesti: "Diğer kullanıcı içeriği" ve "Cihaz kimliği" — kimliğe bağlı değil, takip yok, yalnızca uygulama işlevi
+- Şifreleme beyanı (`ITSAppUsesNonExemptEncryption = NO`)
+- Sunucu: `https://upsite-api.alpp.workers.dev` (Cloudflare Workers + D1, kurulum: `server/KURULUM.md`)
+- Destek ve gizlilik sayfaları: https://alpp.studio/upsite/ ve https://alpp.studio/upsite/privacy/
 
 ---
 
-## 1. Kontrol listesi
+## 1. Gönderim adımları
 
-### Bir kez yapılacaklar
+### Derleme
 
-- [ ] **Apple Developer Program üyeliği** (yıllık 99 USD). MANDIRAKE için zaten varsa bu adımı atlayın.
-- [ ] **alpp.studio sitesinin yayında olduğunu kontrol edin.** MonSite sayfaları ayrı `alpp.studio` deposunda. Şu adresler açılmalı:
-  - https://alpp.studio/monsite/
-  - https://alpp.studio/monsite/privacy/
-- [ ] **Bundle ID'yi kaydedin.** Xcode → MonSite hedefi → **Signing & Capabilities** → Team'i seçin, **Automatically manage signing** açık kalsın. Xcode, `studio.alpp.monsite` kimliğini geliştirici hesabınıza kendisi kaydeder.
+1. `git pull`, sonra Xcode'da `UpSite.xcodeproj`'u açın.
+2. Üstteki cihaz menüsünden **Any iOS Device (arm64)** seçin.
+3. **Product → Archive**. Bitince Organizer açılır.
+4. **Distribute App** → **App Store Connect** → **Distribute**.
+5. 10–30 dakika sonra derleme App Store Connect'te görünür (e-posta gelir).
 
 ### App Store Connect
 
-- [ ] https://appstoreconnect.apple.com → **Uygulamalar** → **+** → **Yeni Uygulama**
-  - Platform: iOS
-  - Ad: `MonSite` (alınmışsa `MonSite: Site İzleme`)
-  - Birincil dil: Türkçe
-  - Bundle ID: `studio.alpp.monsite`
-  - SKU: `monsite-ios-1`
-  - Kullanıcı erişimi: Tam erişim
-- [ ] **Uygulama Bilgileri**
-  - Kategori: birincil **Geliştirici Araçları**, ikincil **Yardımcı Uygulamalar**
-  - Gizlilik politikası URL'si: `https://alpp.studio/monsite/privacy/`
-  - İngilizce yerelleştirme ekleyin (sağ üstteki dil menüsü → İngilizce (ABD)). Bölüm 2'deki İngilizce metinleri kullanın.
-- [ ] **Yaş derecelendirmesi**: bölüm 3'teki cevaplar → 4+
-- [ ] **Uygulama Gizliliği** → **Veri Toplanmıyor** (bölüm 4)
-- [ ] **Fiyatlandırma ve Erişilebilirlik**: Ücretsiz, tüm ülkeler
-- [ ] **1.0 sürüm sayfası**: bölüm 2'deki metinler, bölüm 6'daki ekran görüntüleri, bölüm 5'teki inceleme notu
-  - Telif hakkı: `2026 <adınız soyadınız>`
+1. https://appstoreconnect.apple.com → **Uygulamalar** → MonSite.
+2. Sol üstte iOS uygulaması yanındaki **+** → yeni sürüm: `2.0`.
+   - 1.0 hâlâ incelemedeyse önce onu sürüm sayfasından **Bu Sürümü Kaldır** (Remove from Review) ile geri çekin. Onaylandıysa doğrudan 2.0 oluşturun.
+3. **Sürüm 2.0 sayfası** (Türkçe ve İngilizce için ayrı ayrı):
+   - Ekran görüntülerini değiştirin (bölüm 6).
+   - **Bu sürümdeki yenilikler**, tanıtım metni, açıklama, anahtar kelimeler, destek URL'si: bölüm 2.
+   - **Derleme**: 2.0 (3)'ü seçin.
+   - **App Review bilgileri**: bölüm 5'teki notu yapıştırın; "Giriş gerekli" kutusu boş.
+4. **Uygulama Bilgileri** (sol menü):
+   - **Ad**: `UpSite` (alınmışsa `UpSite: Uptime Monitor`), **Alt başlık**: bölüm 2. Ad ve alt başlık yalnızca yeni sürüm "Gönderime Hazırlanıyor" durumundayken değişebilir.
+   - **Gizlilik politikası URL'si**: `https://alpp.studio/upsite/privacy/` (her iki dilde).
+   - **Kategori**: birincil **Geliştirici Araçları**, ikincil **Yardımcı Uygulamalar**.
+   - **Yaş derecelendirmesi**: bölüm 3.
+5. **Uygulama Gizliliği** (sol menü): bölüm 4'e göre yeniden doldurup **Yayımla**.
+6. Sürüm sayfasında **İncelemeye Gönder**.
 
-### Derleme ve gönderme
-
-- [ ] Xcode'da üstteki cihaz menüsünden **Any iOS Device (arm64)** seçin.
-- [ ] **Product → Archive**. Bittiğinde Organizer penceresi açılır.
-- [ ] **Distribute App** → **App Store Connect** → **Distribute**.
-- [ ] 10–30 dakika sonra derleme App Store Connect → **TestFlight** sekmesinde görünür.
-- [ ] Kendi telefonunuzda TestFlight ile deneyin: tarama, izleme ekleme, bildirim, Hakkında ekranındaki bağlantılar.
-- [ ] Sürüm sayfasında **Derleme** bölümünden bu derlemeyi seçin → **İncelemeye Gönder**.
-
-İnceleme genellikle 1–3 gün sürer.
+İnceleme genellikle 1–3 gün sürer. Onaydan sonra eski `alpp.studio/monsite/` sayfaları UpSite'a yönlendirilebilir.
 
 ### Sonraki sürümler
 
-Her yüklemede `CURRENT_PROJECT_VERSION` (derleme numarası) artmalı. Xcode → MonSite hedefi → **General** → **Build** alanını 2, 3 … diye artırın. Yeni özellik içeren sürümlerde **Version** değerini de artırın (1.1, 1.2 …).
+Her yüklemede **Build** artmalı (Xcode → UpSite hedefi → General → Build: 4, 5 …). Yeni özellik içeren sürümlerde **Version** da artmalı (2.1 …).
 
 ---
 
@@ -66,89 +54,80 @@ Her yüklemede `CURRENT_PROJECT_VERSION` (derleme numarası) artmalı. Xcode →
 
 ### Türkçe
 
-**Ad** (30 karakter sınırı)
+**Ad** (30)
 ```
-MonSite
-```
-
-**Alt başlık** (30 karakter sınırı)
-```
-Site sağlığı, hız, SSL takibi
+UpSite
 ```
 
-**Tanıtım metni** (170 karakter sınırı; inceleme gerektirmeden değiştirilebilir)
+**Alt başlık** (30)
 ```
-Sitenizi tek dokunuşla tarayın: kırık bağlantılar, yavaş sayfalar, güvenlik eksikleri ve SSL bitiş tarihi tek raporda. Düzenli izlemeyle değişiklikleri kaçırmayın.
+Site kesinti ve SSL takibi
+```
+
+**Tanıtım metni** (170)
+```
+Siteniz erişilemez olduğu anda bildirim alın. UpSite kontrolleri sunucuda yapar; telefonunuz kilitli olsa da kesintileri kaçırmazsınız.
+```
+
+**Bu sürümdeki yenilikler**
+```
+MonSite artık UpSite!
+
+• Yeni ad, yeni simge, koyu ve sade tasarım
+• Siteleriniz 15 dakikadan 1 güne kadar seçtiğiniz sıklıkta, saat başına hizalı olarak kontrol edilir
+• Kontroller UpSite sunucusunda yapılır; uygulama kapalıyken bile kesinti ve düzelme bildirimleri gelir
+• Sertifikalar sekmesi: bitiş tarihleri, yenilenen sertifikalar ve bitişe yaklaşınca hatırlatma
+• Yanlış alarm koruması, sessiz saatler, site listesini dışa/içe aktarma
+• Türkçe ve İngilizce
+
+Sayfa hızı ve güvenlik denetimi özellikleri bu sürümde kaldırıldı.
 ```
 
 **Açıklama**
 ```
-MonSite, web sitenizi baştan sona gezer ve sağlığını tek bir raporda gösterir: bağlantılar, performans, erişilebilirlik, SEO, güvenlik ve SSL. Adresi yazın, taramayı başlatın; gerisini MonSite halleder.
+UpSite, web siteleriniz için sade ve güvenilir bir erişilebilirlik (uptime) takipçisidir. Sitelerinizi ekleyin, kontrol sıklığını seçin; siteniz erişilemez olduğunda UpSite size hemen haber versin.
 
-KIRIK BAĞLANTI VE KAYNAKLAR
-• Sitedeki tüm sayfaları sırayla açar, 404 ve sunucu hatalarını bulur
-• Yüklenemeyen resim, script, CSS, font ve dosyaları listeler
-• Açılamayan bozuk resimleri ve hata sayfası döndüren adresleri yakalar
-• Dış bağlantıların hâlâ çalışıp çalışmadığını kontrol eder
-• Sitemap ve robots.txt'yi okur, CSS içindeki font ve resimleri de kontrol eder
+TELEFONUNUZ KİLİTLİYKEN DE ÇALIŞIR
+Kontroller telefonunuzda değil UpSite sunucusunda yapılır. Uygulamayı kapatsanız da, telefonunuz kilitli olsa da kesinti bildirimleri gelir.
 
-PERFORMANS
-• Her sayfa için DNS, bağlantı, TLS, ilk bayt ve indirme süreleri
-• En yavaş sayfalar ve en yavaş yüklenen parçalar
-• Sıkıştırma, önbellek, HTTP/2, oluşturmayı engelleyen script'ler
-• Aşırı büyük resimler ve sayfa ağırlığı
+SİZİN SEÇTİĞİNİZ SIKLIK
+• 15 dakika, 30 dakika, 1 saat, 6 saat, 12 saat veya 1 gün
+• Kontroller saat başına hizalıdır: 15 dakikada bir :00, :15, :30, :45'te
+• Siteyi eklediğiniz anda ilk kontrol yapılır
 
-ERİŞİLEBİLİRLİK (WCAG)
-• Alt metni olmayan görseller, adı olmayan bağlantı ve düğmeler
-• Etiketi olmayan form alanları, sayfa dili, başlık yapısı
-• Yakınlaştırmanın engellenmesi, başlıksız iframe'ler ve daha fazlası
+NET KURAL
+• Yönlendirmeler izlenir; son yanıt 200–299 ise site erişilebilirdir
+• Hata kodu, zaman aşımı, DNS ve güvenli bağlantı hataları ayrı ayrı gösterilir
 
-SEO
-• Başlık ve meta açıklama kontrolleri, yinelenen başlıklar
-• Canonical, noindex, mobil uyum, sosyal medya etiketleri
-• Sitemap, robots.txt, yetim sayfalar ve soft 404
+BİLDİRİMLER
+• Site erişilemez olduğunda bildirim
+• İsterseniz tekrar erişilebildiğinde de bildirim ve kesinti süresi
+• Yanlış alarm koruması: kesinti bildirilmeden önce tekrar deneme
+• Sessiz saatler: gece gelen bildirimler sessizce Bildirim Merkezi'ne düşer
 
-GÜVENLİK
-• HTTPS kullanımı ve HTTP'den HTTPS'e yönlendirme
-• HSTS, CSP, clickjacking koruması gibi güvenlik başlıkları
-• Çerez güvenlik ayarları, karışık içerik, şifresiz gönderilen formlar
-• CSP ve HSTS kalitesi, dış script'lerde bütünlük (SRI) kontrolü
-• Sunucu sürüm bilgisi sızıntıları, security.txt
-• İsteğe bağlı: herkese açık kalmış .git, .env ve yedek dosyaları
+GEÇMİŞ
+• Her site için son 7 günün kontrol çubukları ve erişilebilirlik yüzdesi
+• Kesinti ve düzelme olayları
 
-SSL SERTİFİKASI
-• Güvenilirlik, sertifikayı veren kuruluş, başlangıç ve bitiş tarihi
-• Bitişe kaç gün kaldığı; süre yaklaşınca uyarı
-• Anahtar türü ve uzunluğu
-
-SAĞLIK PUANI
-• Genel puan ve A–F not, ayrıca beş alanın her biri için ayrı puan
-• Sorunlar önem derecesine ve kategoriye göre gruplanır
-
-ZAMANLANMIŞ İZLEME
-• Sitelerinizi dakikalık, saatlik veya günlük aralıklarla izleyin
-• Her kontrol bir öncekiyle karşılaştırılır: yeni ve çözülen sorunlar, bozulan ve düzelen kaynaklar, yavaşlayan sayfalar, sertifika yenilenmesi
-• Çalışırlık yüzdesi, ortalama yanıt süresi ve son kesinti
-• Ana sayfada beklenen bir metin yoksa kesinti olarak algılama
-• Değişiklik olunca bildirim
-• Puan, yükleme süresi ve sorun sayısı için eğilim grafikleri
+SERTİFİKALAR
+• Tüm sitelerinizin SSL sertifikası bitiş tarihleri tek listede
+• Sertifikayı yenilediğinizde tek dokunuşla yeniden kontrol edin, "Yenilendi" etiketiyle hemen görün
+• Bitişe seçtiğiniz gün sayısı kala hatırlatma
 
 GİZLİLİK
-MonSite hiçbir kişisel veri toplamaz. Hesap gerekmez, reklam ve takip yoktur. Tüm sonuçlar yalnızca cihazınızda saklanır.
+Hesap açmanız gerekmez. Ad, e-posta ya da telefon numarası istenmez; reklam ve takip yoktur. Sunucuda yalnızca izlediğiniz adresler, kontrol sonuçları ve bildirim kaydı tutulur; tümünü uygulamadan tek dokunuşla silebilirsiniz.
 
-Raporları metin veya JSON olarak paylaşabilirsiniz.
-
-Not: Arka plandaki kontrollerin zamanını iOS belirler; uygulama açıkken kontroller seçtiğiniz sıklıkta yapılır. Taramaları yalnızca size ait veya test izniniz olan sitelerde yapın.
+Cihaz başına en fazla 50 site eklenebilir.
 ```
 
-**Anahtar kelimeler** (100 karakter sınırı, virgülle, boşluksuz)
+**Anahtar kelimeler** (100, virgülle, boşluksuz)
 ```
-web,site,denetim,izleme,ssl,sertifika,kırık link,hız,güvenlik,uptime,seo,wcag,erişilebilirlik
+uptime,izleme,web sitesi,kesinti,ssl,sertifika,sunucu,erişilebilirlik,bildirim,monitor,down,site
 ```
 
 **Destek URL'si**
 ```
-https://alpp.studio/monsite/
+https://alpp.studio/upsite/
 ```
 
 **Pazarlama URL'si** (isteğe bağlı)
@@ -160,82 +139,73 @@ https://alpp.studio/
 
 **Name**
 ```
-MonSite
+UpSite
 ```
 
 **Subtitle**
 ```
-Website health, speed and SSL
+Website uptime & SSL monitor
 ```
 
 **Promotional text**
 ```
-Scan your site in one tap: broken links, slow pages, security gaps and SSL expiry in a single report. Schedule checks and get notified when something changes.
+Get notified the moment your site goes down. UpSite runs checks on its server, so you won't miss downtime even when your phone is locked.
+```
+
+**What's New**
+```
+MonSite is now UpSite!
+
+• New name, new icon, a dark and clean design
+• Sites are checked at the interval you choose, from 15 minutes to 1 day, aligned to the hour
+• Checks run on the UpSite server, so down and recovery alerts arrive even when the app is closed
+• Certificates tab: expiry dates, renewed certificates and reminders before expiry
+• False alarm protection, quiet hours, site list export and import
+• Turkish and English
+
+Page speed and security audit features were removed in this version.
 ```
 
 **Description**
 ```
-MonSite crawls your website from top to bottom and shows its health in a single report: links, performance, accessibility, SEO, security and SSL. Type the address, start the scan, and MonSite does the rest.
+UpSite is a simple, reliable uptime monitor for your websites. Add your sites, pick a check interval, and UpSite tells you right away when a site goes down.
 
-BROKEN LINKS AND RESOURCES
-• Opens every page on the site and finds 404s and server errors
-• Lists images, scripts, CSS, fonts and files that fail to load
-• Catches corrupt images and addresses that return an error page instead
-• Checks whether external links still work
-• Reads sitemap and robots.txt, and checks fonts and images referenced in CSS
+WORKS WHILE YOUR PHONE IS LOCKED
+Checks run on the UpSite server, not on your phone. You get downtime alerts even when the app is closed or your phone is locked.
 
-PERFORMANCE
-• DNS, connect, TLS, time-to-first-byte and download times for every page
-• Slowest pages and slowest-loading resources
-• Compression, caching, HTTP/2 and render-blocking scripts
-• Oversized images and page weight
+YOUR INTERVAL
+• 15 minutes, 30 minutes, 1 hour, 6 hours, 12 hours or 1 day
+• Checks are aligned to the hour: every 15 minutes means :00, :15, :30, :45
+• The first check runs as soon as you add a site
 
-ACCESSIBILITY (WCAG)
-• Images without alt text, links and buttons without names
-• Unlabeled form fields, page language, heading structure
-• Disabled zoom, untitled iframes and more
+A CLEAR RULE
+• Redirects are followed; a site is up if the final response is 200–299
+• Error codes, timeouts, DNS and secure connection failures are shown separately
 
-SEO
-• Title and meta description checks, duplicate titles
-• Canonical, noindex, mobile viewport, social preview tags
-• Sitemap, robots.txt, orphan pages and soft 404s
+NOTIFICATIONS
+• Alert when a site goes down
+• Optional alert when it's back up, with the downtime duration
+• False alarm protection: retries before reporting downtime
+• Quiet hours: alerts at night arrive silently in Notification Center
 
-SECURITY
-• HTTPS usage and HTTP-to-HTTPS redirects
-• Security headers such as HSTS, CSP and clickjacking protection
-• Cookie flags, mixed content and forms submitted over plain HTTP
-• CSP and HSTS quality, Subresource Integrity for external scripts
-• Server version disclosure, security.txt
-• Optional: publicly exposed .git, .env and backup files
+HISTORY
+• Last 7 days of checks and uptime percentage for each site
+• Down and recovery events
 
-SSL CERTIFICATE
-• Trust status, issuer, start and expiry dates
-• Days remaining, with a warning as expiry approaches
-• Key type and size
-
-HEALTH SCORE
-• An overall score and A–F grade, plus a separate score for each of five areas
-• Issues grouped by severity and category
-
-SCHEDULED MONITORING
-• Monitor your sites every minute, hour or day
-• Every check is compared with the previous one: new and resolved issues, newly broken and fixed resources, slower pages, certificate renewals
-• Uptime percentage, average response time and last downtime
-• Detects downtime when expected text is missing from the home page
-• Notifications when something changes
-• Trend charts for score, load time and issue count
+CERTIFICATES
+• SSL certificate expiry dates for all your sites in one list
+• Recheck with one tap after renewing and see the "Renewed" badge right away
+• Reminders the number of days you choose before expiry
 
 PRIVACY
-MonSite collects no personal data. No account, no ads, no tracking. All results are stored only on your device.
+No account needed. No name, email or phone number, no ads, no tracking. The server stores only the addresses you monitor, check results and your notification registration, and you can delete all of it from the app with one tap.
 
-Share reports as text or JSON.
-
-Note: iOS decides when background checks run; while the app is open, checks run at the interval you choose. Only scan sites you own or are authorized to test.
+Up to 50 sites per device.
 ```
 
 **Keywords**
 ```
-website,monitor,uptime,ssl,certificate,broken link,checker,speed,security,seo,wcag,accessibility
+uptime,monitor,website,downtime,ssl,certificate,server,status,alert,ping,web,checker,down,site
 ```
 
 **Support URL** / **Marketing URL**: same as above.
@@ -248,7 +218,7 @@ Bütün içerik sorularına (şiddet, cinsellik, kumar, uyuşturucu, korku vb.) 
 
 | Soru | Cevap |
 |---|---|
-| Sınırsız web erişimi | Hayır. Uygulama web sayfası göstermez; yalnızca HTTP isteği gönderip yanıtı analiz eder. Bağlantılar Safari'de açılır. |
+| Sınırsız web erişimi | Hayır. Uygulama web sayfası göstermez; yalnızca sitelerin yanıt kodunu ve sertifikasını kontrol eder. |
 | Kullanıcı tarafından oluşturulan içerik | Hayır |
 | Mesajlaşma ve sohbet | Hayır |
 | Reklam | Hayır |
@@ -260,35 +230,46 @@ Sonuç: **4+**
 
 ## 4. Uygulama gizliliği (App Privacy)
 
-- "Bu uygulamadan veri topluyor musunuz?" → **Hayır, bu uygulamadan veri toplamıyoruz**
-- Sonuç etiketi: **Veri Toplanmıyor**
+1.0'daki "Veri Toplanmıyor" artık doğru değil; sunucuda veri tutuluyor. Şöyle doldurun:
 
-Gerekçe: Tarama sonuçları ve ayarlar yalnızca cihazda saklanıyor. Uygulamada analitik, reklam veya crash raporlama SDK'sı yok. Ağ istekleri yalnızca kullanıcının girdiği sitelere gidiyor.
+- "Bu uygulamadan veri topluyor musunuz?" → **Evet**
+- İşaretlenecek veri türleri:
+  - **Kullanıcı İçeriği → Diğer Kullanıcı İçeriği** (izlenen site adresleri ve adları)
+  - **Tanımlayıcılar → Cihaz Kimliği** (uygulamanın ürettiği anonim kimlik ve bildirim anahtarı)
+- Her biri için:
+  - Kullanım amacı: **Uygulama İşlevselliği** (yalnızca bu)
+  - Kullanıcının kimliğine bağlı mı? **Hayır**
+  - Takip için kullanılıyor mu? **Hayır**
+
+Sonuç etiketi: **Kimliğinizle İlişkilendirilmeyen Veriler** — Kullanıcı İçeriği, Tanımlayıcılar.
+
+Bu cevaplar projedeki `PrivacyInfo.xcprivacy` ile aynıdır.
 
 ---
 
-## 5. App Review notu (Review Notes)
+## 5. App Review notu
 
 İngilizce yazın. **Sign-in required** kutusunu boş bırakın.
 
 ```
-MonSite is a website auditing and monitoring tool for site owners and developers. No account or sign-in is required.
+UpSite (formerly MonSite) is an uptime monitor for website owners. No account or sign-in is required.
+
+How it works:
+Sites are checked by our own backend (Cloudflare Workers) at the interval the user chooses, aligned to the hour. When a site goes down or comes back up, the backend sends an Apple push notification. This lets alerts arrive while the app is closed. The app doesn't use any background modes.
 
 How to test:
-1. On the "Tarama" (Scan) tab, enter any website address (e.g. apple.com or example.com) and tap "Taramayı başlat" (Start scan).
-2. The report shows a health score, broken links/resources, load times, security headers and the SSL certificate.
-3. On the "İzleme" (Monitoring) tab, tap + to add a site and choose an interval. The first check runs immediately. Tap "Şimdi kontrol et" (Check now) again to create a second run; the run detail shows differences from the previous check.
+1. Allow notifications when asked (the prompt appears after adding the first site).
+2. On the "Sites" tab, tap + and add any site, e.g. example.com. The first check runs immediately and the result appears within a few seconds.
+3. Open the site to see its status, the last 7 days of checks, and notification toggles. "Check now" runs a check on demand.
+4. Settings → "Send test notification" sends a push through the backend.
+5. The "Certificates" tab shows SSL certificate expiry dates. These are checked directly from the device when the app opens; tap refresh to recheck.
 
-About NSAllowsArbitraryLoads:
-The app audits websites the user enters, which may still use plain HTTP. Auditing a site requires connecting to it over HTTP, for example to check whether HTTP redirects to HTTPS or to report that the site does not use HTTPS. The app never displays web content; it only sends requests and analyzes the responses.
+To see a site go down, add an address that returns an error, e.g. httpbin.org/status/503.
 
-About background fetch:
-BGAppRefreshTask is used to run lightweight scheduled checks for the user's monitored sites and to post a local notification if the results changed. No remote server is involved.
+Push notifications are used only for the user's own site alerts; there is no marketing content.
 
-About the optional sensitive file check:
-It is off by default and requires the user to confirm they manage the site. It only requests a short list of well-known public paths (such as /.git/HEAD or /.env) to warn site owners about files exposed by misconfiguration. No exploitation or authentication attempts are made.
+Data: The backend stores an anonymous random device ID, the monitored site addresses, check results and the push token. There is no account and no personal information. Settings → "Delete all my data" removes everything from the server.
 
-All data stays on the device. The app collects no personal data.
 Contact: help@alpp.studio
 ```
 
@@ -296,42 +277,22 @@ Contact: help@alpp.studio
 
 ## 6. Ekran görüntüleri
 
-**Gerekli boyut**
+**iPhone 6.9"** (1320 × 2868). Uygulama yalnızca iPhone'u desteklediği için iPad görüntüsü gerekmiyor. 1.0'ın ekran görüntülerini silip bunları yükleyin.
 
-- **iPhone 6.9"**: 1320 × 2868. Uygulama yalnızca iPhone'u desteklediği için iPad görüntüsü gerekmiyor.
+Görüntüler demo verisiyle simülatörde otomatik çekiliyor: GitHub → Actions → **Screenshots** → Run workflow. Sonuç `screenshots` dalına konur: https://github.com/naniniyesuh/monsite/tree/screenshots
 
-Hazır görüntüler ve App Review için tanıtım videosu, her `v1.1` push'unda GitHub Actions tarafından simülatörde otomatik çekilip `screenshots` dalına konuyor: https://github.com/naniniyesuh/monsite/tree/screenshots
-
-**Elle almak isterseniz**
-
-Simülatörde uygulamayı çalıştırın, ekranı hazırlayın ve **⌘S** tuşuna basın. Görüntü masaüstüne doğru boyutta kaydedilir.
-
-Durum çubuğunu temizlemek için (saat 9:41, tam pil) Terminal'e şunu yazın:
-```
-xcrun simctl status_bar booted override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
-```
-
-**Önerilen sıra**
-
-1. Rapor ekranı: puan halkası ve ölçüm kartları. Puanı iyi çıkan bir site seçin.
-2. Kategoriler ve sorun listesi
-3. Sayfa ayrıntısı: zamanlama (DNS, TLS, TTFB)
-4. İzleme listesi: birkaç site eklenmiş halde
-5. Kontrol farkları: çözülen sorunlar ve hızlanan sayfalar
-
-Görüntülerin üstüne başlık eklemek isterseniz önerilen kısa başlıklar:
-
-1. Sitenizin sağlığı tek bakışta
-2. Kırık bağlantıları anında bulun
-3. Her sayfanın hızını ölçün
-4. Sitelerinizi düzenli izleyin
-5. Neyin değiştiğini görün
+| Sıra | Türkçe | English |
+|---|---|---|
+| 1 | `tr-01-siteler.png` | `en-01-siteler.png` |
+| 2 | `tr-02-ayrinti.png` | `en-02-ayrinti.png` |
+| 3 | `tr-03-sertifikalar.png` | `en-03-sertifikalar.png` |
+| 4 | `tr-04-ayarlar.png` | `en-04-ayarlar.png` |
 
 ---
 
 ## 7. Olası inceleme soruları
 
-- **Ad çakışması:** "MonSite" adı App Store'da alınmışsa yeni uygulama oluştururken hata alırsınız. `MonSite: Site İzleme` gibi bir ad deneyin. Ana ekrandaki ad yine "MonSite" kalır.
-- **Arka plan kullanımı:** İnceleme ekibi `fetch` modunun ne için kullanıldığını sorabilir. İnceleme notu bunu açıklıyor.
-- **"Güvenlik tarayıcısı" algısı:** Hassas dosya taraması varsayılan olarak kapalı, açarken onay isteniyor ve yalnızca bilinen herkese açık yollara bakıyor. İnceleme notu bunu da açıklıyor. Ret gelirse bu özelliği 1.0'dan çıkarıp sonraki sürüme bırakmak en hızlı çözüm.
-- **Simge çözünürlüğü:** Mevcut simge düşük çözünürlüklü bir görselden büyütüldü. Yüksek çözünürlüklü logo varsa göndermeden önce değiştirmek iyi olur.
+- **Ad çakışması:** "UpSite" alınmışsa ad alanı hata verir. `UpSite: Uptime Monitor` deneyin; ana ekrandaki ad yine "UpSite" kalır.
+- **Sunucuya erişim:** İnceleme sırasında sunucu çalışıyor olmalı. Cloudflare panelinde Worker'ı durdurmayın.
+- **Özellik kaldırma:** 1.0'daki tarama özellikleri kaldırıldı; "Bu sürümdeki yenilikler" metni bunu açıkça söylüyor.
+- **Bildirim izni:** İzin ilk site eklendiğinde isteniyor, uygulama açılır açılmaz değil. Apple bu davranışı tercih ediyor.
