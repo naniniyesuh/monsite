@@ -90,6 +90,7 @@ final class CertStore: ObservableObject {
         let current = Set(records.keys.map { "cert.\($0)" })
         // Aynı kimlikle eklenen istek eskisinin yerine geçer; artık takip edilmeyenleri ayrıca sil.
         center.getPendingNotificationRequests { reqs in
+            let center = UNUserNotificationCenter.current()
             let stale = reqs.map(\.identifier).filter { $0.hasPrefix("cert.") && !current.contains($0) }
             if !stale.isEmpty { center.removePendingNotificationRequests(withIdentifiers: stale) }
         }
