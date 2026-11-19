@@ -33,8 +33,8 @@ struct SiteDetailView: View {
 
                 HStack(spacing: 8) {
                     fact(CheckInterval.label(site.intervalMin), L.s("detail.interval"))
-                    fact(site.lastCheck.map { $0.formatted(date: .omitted, time: .shortened) } ?? "—", L.s("detail.last"))
-                    fact(site.nextCheck.map { $0.formatted(date: .omitted, time: .shortened) } ?? "—", L.s("detail.next"))
+                    fact(site.lastCheck.map { $0.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: L.locale)) } ?? "—", L.s("detail.last"))
+                    fact(site.nextCheck.map { $0.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: L.locale)) } ?? "—", L.s("detail.next"))
                 }
                 .listRowInsets(EdgeInsets(top: 12, leading: 0, bottom: 0, trailing: 0))
                 .listRowBackground(Color.clear)
@@ -73,7 +73,7 @@ struct SiteDetailView: View {
                             Circle().fill(e.kind == "down" ? Theme.down : Theme.up).frame(width: 10, height: 10).padding(.top, 5)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(eventTitle(e)).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text)
-                                Text(e.date.formatted(date: .abbreviated, time: .shortened)).font(.footnote).foregroundStyle(Theme.text3)
+                                Text(e.date.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened, locale: L.locale))).font(.footnote).foregroundStyle(Theme.text3)
                             }
                         }
                         .accessibilityElement(children: .combine)

@@ -103,7 +103,7 @@ private struct CertRow: View {
                     }
                 }
                 Text(line1).font(.footnote).foregroundStyle(record.error != nil && record.notAfter == nil ? Theme.down : Theme.text2).lineLimit(2)
-                Text(line2).font(.caption).foregroundStyle(Theme.text3)
+                if !line2.isEmpty { Text(line2).font(.caption).foregroundStyle(Theme.text3) }
             }
             Spacer(minLength: 0)
             Button {
@@ -122,17 +122,17 @@ private struct CertRow: View {
 
     private var line1: String {
         if let end = record.notAfter {
-            let date = end.formatted(date: .abbreviated, time: .omitted)
+            let date = end.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted, locale: L.locale))
             return [L.s("certs.expires", date), record.issuer].compactMap { $0 }.joined(separator: " · ")
         }
         return record.error ?? L.s("certs.notChecked")
     }
 
     private var line2: String {
-        if record.checkedAt == .distantPast { return L.s("certs.notChecked") }
+        if record.checkedAt == .distantPast { return "" }
         var s = L.s("certs.checked", SiteText.relative(record.checkedAt))
         if record.recentlyChanged, let prev = record.previousNotAfter {
-            s = L.s("certs.newCert", prev.formatted(date: .abbreviated, time: .omitted)) + " · " + s
+            s = L.s("certs.newCert", prev.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted, locale: L.locale))) + " · " + s
         }
         if !record.trusted && record.notAfter != nil { s = L.s("certs.untrusted") + " · " + s }
         return s

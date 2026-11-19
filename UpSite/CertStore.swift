@@ -108,7 +108,7 @@ final class CertStore: ObservableObject {
             }
             let content = UNMutableNotificationContent()
             content.title = L.s("cert.reminder.title", r.host)
-            content.body = L.s("cert.reminder.body", threshold, end.formatted(date: .long, time: .omitted))
+            content.body = L.s("cert.reminder.body", threshold, end.formatted(Date.FormatStyle(date: .long, time: .omitted, locale: L.locale)))
             content.sound = .default
             content.threadIdentifier = "certs"
             let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)

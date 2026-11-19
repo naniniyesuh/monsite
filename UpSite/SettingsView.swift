@@ -146,7 +146,7 @@ struct SettingsView: View {
     private var serverValue: String {
         if !store.api.isConfigured && !store.demo { return L.s("server.notConfigured") }
         if store.lastError != nil { return L.s("server.unreachable") }
-        if let t = store.lastCronAt { return L.s("server.ok", t.formatted(date: .omitted, time: .shortened)) }
+        if let t = store.lastCronAt { return L.s("server.ok", t.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: L.locale))) }
         return "—"
     }
 }

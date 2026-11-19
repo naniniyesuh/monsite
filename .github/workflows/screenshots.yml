@@ -38,8 +38,9 @@ jobs:
           xcrun simctl launch "$UDID" $BID -UpSiteDemo; sleep 20
           run() { # dil ad süre argümanlar...
             local lang=$1 name=$2 wait=$3; shift 3
+            local loc=$([ $lang = tr ] && echo tr_TR || echo en_US)
             xcrun simctl terminate "$UDID" $BID || true; sleep 1
-            xcrun simctl launch "$UDID" $BID -UpSiteDemo -language $lang -AppleLanguages "($lang)" "$@"
+            xcrun simctl launch "$UDID" $BID -UpSiteDemo -language $lang -AppleLanguages "($lang)" -AppleLocale $loc "$@"
             sleep "$wait"
             xcrun simctl io "$UDID" screenshot "shots/$lang-$name.png"
           }

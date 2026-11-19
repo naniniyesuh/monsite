@@ -109,7 +109,7 @@ private struct SummaryCard: View {
             HStack(spacing: 0) {
                 metric("\(store.upCount)", L.s("summary.up"), Theme.up)
                 metric("\(store.downSites.count)", L.s("summary.down"), store.downSites.isEmpty ? Theme.text : Theme.down)
-                metric(store.nextCheck.map { $0.formatted(date: .omitted, time: .shortened) } ?? "—", L.s("summary.next"), Theme.text)
+                metric(store.nextCheck.map { $0.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: L.locale)) } ?? "—", L.s("summary.next"), Theme.text)
             }
             .padding(16)
             .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -118,7 +118,7 @@ private struct SummaryCard: View {
             if let last = store.lastCronAt {
                 HStack(spacing: 6) {
                     Circle().fill(store.serverLate ? Theme.warn : Theme.up).frame(width: 7, height: 7)
-                    Text(L.s("summary.server", last.formatted(date: .omitted, time: .shortened)))
+                    Text(L.s("summary.server", last.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: L.locale))))
                         .font(.caption)
                         .foregroundStyle(Theme.text3)
                 }
@@ -199,7 +199,7 @@ enum SiteText {
         case .paused: return L.s("site.paused")
         case .unknown: return L.s("site.waiting")
         case .down:
-            let t = s.since.map { $0.formatted(date: .omitted, time: .shortened) } ?? "—"
+            let t = s.since.map { $0.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: L.locale)) } ?? "—"
             return L.s("site.downSince", t, s.since.map { duration(from: $0) } ?? "")
         case .up:
             if let since = s.since { return L.s("site.upFor", duration(from: since)) }

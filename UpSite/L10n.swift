@@ -12,7 +12,12 @@ enum L {
         }
     }
 
-    static var locale: Locale { Locale(identifier: current == .tr ? "tr_TR" : "en_US") }
+    /// Tarih ve sayı biçimi: sistem dili seçili dille aynıysa kullanıcının bölge ayarları korunur.
+    static var locale: Locale {
+        let lang = current == .tr ? "tr" : "en"
+        if Locale.current.identifier.lowercased().hasPrefix(lang) { return Locale.current }
+        return Locale(identifier: current == .tr ? "tr_TR" : "en_US")
+    }
 
     static func s(_ key: String, _ args: CVarArg...) -> String {
         let table = current == .tr ? tr : en

@@ -189,7 +189,7 @@ struct AlignmentHint: View {
         let start = cal.startOfDay(for: now)
         return (0..<4).map { i in
             let d = start.addingTimeInterval(Double((first + i * interval.rawValue) * 60))
-            return d.formatted(date: .omitted, time: .shortened)
+            return d.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: L.locale))
         }.joined(separator: ", ") + "…"
     }
 }
