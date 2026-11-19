@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 import UIKit
-import UserNotifications
+@preconcurrency import UserNotifications
 
 /// Uygulamanın durumu: siteler sunucudan gelir, değişiklikler sunucuya gönderilir.
 @MainActor

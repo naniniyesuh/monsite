@@ -1,7 +1,7 @@
 import Foundation
 import Security
 import CryptoKit
-import UserNotifications
+@preconcurrency import UserNotifications
 
 /// Sertifikaları telefondan kontrol eder (uygulama açıldığında ve istendiğinde)
 /// ve bitiş tarihinden önce yerel uyarı kurar.
