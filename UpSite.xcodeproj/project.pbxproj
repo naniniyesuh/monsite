@@ -263,7 +263,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
-				UPSITE_API_BASE = "https://upsite-api.YOUR-SUBDOMAIN.workers.dev";
+				UPSITE_API_BASE = "https://upsite-api.alpp.workers.dev";
 			};
 			name = Debug;
 		};
@@ -291,7 +291,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
-				UPSITE_API_BASE = "https://upsite-api.YOUR-SUBDOMAIN.workers.dev";
+				UPSITE_API_BASE = "https://upsite-api.alpp.workers.dev";
 			};
 			name = Release;
 		};
