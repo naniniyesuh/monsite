@@ -5,7 +5,7 @@ struct AddSiteView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var url = ""
     @State private var name = ""
-    @State private var interval = CheckInterval.m15
+    @State private var interval = CheckInterval.defaultValue
     @State private var notifyDown = true
     @State private var notifyUp = true
     @State private var trackCert = true
@@ -79,7 +79,16 @@ struct AddSiteView: View {
                     }
                 }
             }
-            .onAppear { urlFocused = true }
+            .onAppear {
+                // Ekran görüntüleri için: -UpSiteAddInterval 4
+                let args = ProcessInfo.processInfo.arguments
+                if let i = args.firstIndex(of: "-UpSiteAddInterval"), i + 1 < args.count, let m = Int(args[i + 1]) {
+                    url = "example.com"
+                    interval = CheckInterval.clamp(m)
+                } else {
+                    urlFocused = true
+                }
+            }
         }
     }
 
@@ -88,7 +97,7 @@ struct AddSiteView: View {
         error = nil
         Task {
             do {
-                _ = try await store.add(url: url, name: name, interval: interval.rawValue,
+                _ = try await store.add(url: url, name: name, interval: interval,
                                         notifyDown: notifyDown, notifyUp: notifyUp, trackCert: trackCert)
                 dismiss()
             } catch {
@@ -104,7 +113,7 @@ struct EditSiteView: View {
     @EnvironmentObject private var store: SiteStore
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
-    @State private var interval = CheckInterval.m15
+    @State private var interval = CheckInterval.defaultValue
 
     var body: some View {
         NavigationStack {
@@ -127,7 +136,7 @@ struct EditSiteView: View {
                     Button(L.s("action.save")) {
                         Task {
                             await store.update(site, name: name == site.name ? nil : name,
-                                               interval: interval.rawValue == site.intervalMin ? nil : interval.rawValue)
+                                               interval: interval == site.intervalMin ? nil : interval)
                             dismiss()
                         }
                     }
@@ -136,38 +145,77 @@ struct EditSiteView: View {
             }
             .onAppear {
                 name = site.name
-                interval = CheckInterval(rawValue: site.intervalMin) ?? .m15
+                interval = CheckInterval.clamp(site.intervalMin)
             }
         }
     }
 }
 
 struct IntervalPicker: View {
-    @Binding var selection: CheckInterval
+    @Binding var selection: Int
+    @State private var custom = false
+    @FocusState private var fieldFocused: Bool
+
+    private var isCustom: Bool { custom || !CheckInterval.presets.contains(selection) }
 
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-            ForEach(CheckInterval.allCases) { it in
-                let on = it == selection
-                Button { selection = it } label: {
-                    Text(it.short)
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .foregroundStyle(on ? .white : Theme.text)
-                        .background(on ? Theme.accentFill : Theme.bg, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(on ? Theme.accentFill : Theme.border))
+        VStack(spacing: 10) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
+                ForEach(CheckInterval.presets, id: \.self) { m in
+                    chip(CheckInterval.label(m), on: !isCustom && m == selection) {
+                        custom = false
+                        fieldFocused = false
+                        selection = m
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(on ? .isSelected : [])
+                chip(L.s("interval.custom"), on: isCustom) {
+                    custom = true
+                    fieldFocused = true
+                }
+            }
+            if isCustom {
+                HStack(spacing: 12) {
+                    Text(L.s("interval.every")).foregroundStyle(Theme.text2)
+                    TextField("4", value: Binding(get: { selection },
+                                                   set: { selection = CheckInterval.clamp($0) }), format: .number)
+                        .keyboardType(.numberPad)
+                        .focused($fieldFocused)
+                        .multilineTextAlignment(.center)
+                        .font(.body.weight(.semibold).monospacedDigit())
+                        .frame(width: 56, height: 36)
+                        .background(Theme.bg, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.border))
+                    Text(L.s("interval.minutes")).foregroundStyle(Theme.text2)
+                    Spacer(minLength: 0)
+                    Stepper("", value: $selection, in: CheckInterval.range).labelsHidden()
+                }
+                Text(L.s("interval.customHint")).font(.footnote).foregroundStyle(Theme.text3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(.vertical, 6)
+        .onAppear { custom = !CheckInterval.presets.contains(selection) }
+    }
+
+    private func chip(_ title: String, on: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .foregroundStyle(on ? .white : Theme.text)
+                .background(on ? Theme.accentFill : Theme.bg, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(on ? Theme.accentFill : Theme.border))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 
 /// "Saat başına hizalı" açıklaması ve örnek saatler.
 struct AlignmentHint: View {
-    let interval: CheckInterval
+    let interval: Int
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -175,21 +223,17 @@ struct AlignmentHint: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(L.s("add.aligned")).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text)
                 Text(L.s("add.alignedExample", examples)).font(.footnote).foregroundStyle(Theme.text2)
+                if 60 % CheckInterval.clamp(interval) != 0 {
+                    Text(L.s("add.alignedUneven")).font(.footnote).foregroundStyle(Theme.text3)
+                }
             }
         }
         .padding(.vertical, 4)
     }
 
     private var examples: String {
-        let step = min(interval.rawValue, 60)
-        let now = Date()
-        let cal = Calendar.current
-        let m = cal.component(.minute, from: now) + cal.component(.hour, from: now) * 60
-        let first = (m / step + 1) * step
-        let start = cal.startOfDay(for: now)
-        return (0..<4).map { i in
-            let d = start.addingTimeInterval(Double((first + i * interval.rawValue) * 60))
-            return d.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: L.locale))
-        }.joined(separator: ", ") + "…"
+        CheckInterval.upcoming(interval, count: 4)
+            .map { $0.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: L.locale)) }
+            .joined(separator: ", ") + "…"
     }
 }

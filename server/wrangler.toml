@@ -6,7 +6,7 @@ workers_dev = true
 
 # Her 15 dakikada bir (saat başı, :15, :30, :45)
 [triggers]
-crons = ["*/15 * * * *"]
+crons = ["* * * * *"]
 
 [[d1_databases]]
 binding = "DB"

@@ -42,7 +42,7 @@ export async function jobsFor(env: Env, siteIds?: string[]): Promise<CheckJob[]>
 interface RunRow { at_min: number; data: string }
 
 export async function runsOf(env: Env, deviceId: string, sinceMin: number): Promise<{ at: number; data: Record<string, number> }[]> {
-  const r = await env.DB.prepare("SELECT at_min, data FROM runs WHERE device_id = ? AND at_min >= ? ORDER BY at_min DESC, id DESC")
+  const r = await env.DB.prepare("SELECT at_min, data FROM runs WHERE device_id = ? AND at_min >= ? ORDER BY at_min DESC")
     .bind(deviceId, sinceMin).all<RunRow>();
   return r.results.map((row) => {
     let data: Record<string, number> = {};
@@ -75,7 +75,8 @@ export function siteJson(s: SiteRow, nowMs: number, recent: [number, number][]) 
 /** Cihazın tüm siteleri, son sonuçlarıyla. */
 export async function stateOf(env: Env, deviceId: string, nowMs: number) {
   const sites = await sitesOf(env, deviceId);
-  const runs = await runsOf(env, deviceId, Math.floor(nowMs / 60_000) - RETENTION_DAYS * 1440);
+  // Son 24 sonuç için 25 saat yeter (en uzun aralık 1 saat).
+  const runs = await runsOf(env, deviceId, Math.floor(nowMs / 60_000) - 25 * 60);
   const bySite = new Map<string, [number, number][]>();
   for (const run of runs) {
     for (const [id, code] of Object.entries(run.data)) {

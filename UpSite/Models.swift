@@ -84,23 +84,32 @@ struct SiteHistory: Codable {
     }
 }
 
-enum CheckInterval: Int, CaseIterable, Identifiable {
-    case m15 = 15, m30 = 30, h1 = 60, h6 = 360, h12 = 720, d1 = 1440
-    var id: Int { rawValue }
+/// Kontrol sıklığı (dakika). Hazır seçenekler ve 1–60 dakika arası özel değer.
+enum CheckInterval {
+    static let presets = [1, 5, 10, 15, 30, 60]
+    static let range = 1...60
+    static let defaultValue = 15
 
-    var short: String {
-        switch self {
-        case .m15: return L.s("interval.15m")
-        case .m30: return L.s("interval.30m")
-        case .h1: return L.s("interval.1h")
-        case .h6: return L.s("interval.6h")
-        case .h12: return L.s("interval.12h")
-        case .d1: return L.s("interval.1d")
-        }
-    }
+    static func clamp(_ minutes: Int) -> Int { min(max(minutes, range.lowerBound), range.upperBound) }
 
     static func label(_ minutes: Int) -> String {
-        CheckInterval(rawValue: minutes)?.short ?? "\(minutes)"
+        if minutes >= 60, minutes % 60 == 0 {
+            return minutes == 60 ? L.s("interval.1h") : L.s("interval.hours", minutes / 60)
+        }
+        return L.s("interval.min", minutes)
+    }
+
+    /// Şu andan sonraki ilk `count` planlı kontrol (her saat başında yeniden :00'dan sayılır).
+    static func upcoming(_ minutes: Int, count: Int, from now: Date = Date()) -> [Date] {
+        let step = clamp(minutes)
+        let cal = Calendar.current
+        guard var t = cal.date(bySetting: .second, value: 0, of: now) else { return [] }
+        var out: [Date] = []
+        for _ in 0..<(24 * 60) where out.count < count {
+            t = t.addingTimeInterval(60)
+            if (cal.component(.minute, from: t) % 60) % step == 0 { out.append(t) }
+        }
+        return out
     }
 }
 

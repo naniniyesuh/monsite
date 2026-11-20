@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { FakeD1 } from "./fake-d1.ts";
-import { anchorFor, isDue, nextRun, tickOf } from "../src/schedule.ts";
+import { anchorFor, isDue, nextRun, normalizeInterval, tickOf } from "../src/schedule.ts";
 import { formatDuration, inQuietHours, localTime } from "../src/messages.ts";
 import { makeJwt, resetTokenCache } from "../src/apns.ts";
 import { handle, normalizeUrl } from "../src/api.ts";
@@ -13,24 +13,41 @@ const T = (iso: string) => Date.parse(iso);
 
 // ---------------------------------------------------------------- zamanlama
 
-test("anchorFor: saat başına hizalı ilk kontrol", () => {
-  const at = T("2026-11-19T11:07:00Z");
-  assert.equal(anchorFor(15, at) * 60_000, T("2026-11-19T11:15:00Z"));
-  assert.equal(anchorFor(30, at) * 60_000, T("2026-11-19T11:30:00Z"));
-  assert.equal(anchorFor(60, at) * 60_000, T("2026-11-19T12:00:00Z"));
-  assert.equal(anchorFor(1440, at) * 60_000, T("2026-11-19T12:00:00Z"));
+test("aralık doğrulama: 1–60 dk, eski uzun aralıklar 60'a iner", () => {
+  assert.equal(normalizeInterval(4), 4);
+  assert.equal(normalizeInterval(1), 1);
+  assert.equal(normalizeInterval(60), 60);
+  assert.equal(normalizeInterval(360), 60);
+  assert.equal(normalizeInterval(1440), 60);
+  assert.equal(normalizeInterval(0), null);
+  assert.equal(normalizeInterval(4.5), null);
+  assert.equal(normalizeInterval("15"), null);
 });
 
-test("isDue ve nextRun", () => {
-  const anchor = anchorFor(360, T("2026-11-19T11:07:00Z")); // 12:00'den itibaren 6 saatte bir
-  assert.ok(isDue(360, anchor, tickOf(T("2026-11-19T12:00:04Z"))));
-  assert.ok(!isDue(360, anchor, tickOf(T("2026-11-19T12:15:00Z"))));
-  assert.ok(isDue(360, anchor, tickOf(T("2026-11-19T18:00:00Z"))));
-  assert.ok(!isDue(360, anchor, tickOf(T("2026-11-19T06:00:00Z"))));
-  assert.equal(nextRun(360, anchor, T("2026-11-19T12:00:30Z")) * 60_000, T("2026-11-19T18:00:00Z"));
-  const q = anchorFor(15, T("2026-11-19T11:07:00Z"));
+test("isDue ve nextRun: saat başına hizalı", () => {
+  const added = T("2026-11-19T11:07:20Z");
+  const q = anchorFor(15, added);
+  assert.ok(!isDue(15, q, tickOf(T("2026-11-19T11:07:00Z"))), "eklendiği dakikada planlı kontrol yok");
   for (const hhmm of ["11:15", "11:30", "11:45", "12:00"]) assert.ok(isDue(15, q, tickOf(T(`2026-11-19T${hhmm}:00Z`))), hhmm);
+  assert.ok(!isDue(15, q, tickOf(T("2026-11-19T11:16:00Z"))));
   assert.ok(isDue(15, q, tickOf(T("2026-11-19T11:59:45Z"))), "cron gecikmesi/erken tetik toleransı");
+  assert.equal(nextRun(15, q, T("2026-11-19T11:15:10Z")) * 60_000, T("2026-11-19T11:30:00Z"));
+
+  const four = anchorFor(4, added);
+  for (const hhmm of ["11:08", "11:12", "11:56", "12:00", "12:04"]) assert.ok(isDue(4, four, tickOf(T(`2026-11-19T${hhmm}:00Z`))), hhmm);
+  assert.ok(!isDue(4, four, tickOf(T("2026-11-19T11:10:00Z"))));
+  assert.equal(nextRun(4, four, T("2026-11-19T11:09:00Z")) * 60_000, T("2026-11-19T11:12:00Z"));
+
+  // 60'ı tam bölmeyen aralık: her saat başında yeniden :00
+  const seven = anchorFor(7, added);
+  assert.ok(isDue(7, seven, tickOf(T("2026-11-19T11:56:00Z"))));
+  assert.ok(!isDue(7, seven, tickOf(T("2026-11-19T12:03:00Z"))));
+  assert.ok(isDue(7, seven, tickOf(T("2026-11-19T12:00:00Z"))));
+  assert.equal(nextRun(7, seven, T("2026-11-19T11:57:00Z")) * 60_000, T("2026-11-19T12:00:00Z"));
+
+  const one = anchorFor(1, added);
+  assert.ok(isDue(1, one, tickOf(T("2026-11-19T11:09:00Z"))));
+  assert.equal(nextRun(60, anchorFor(60, added), T("2026-11-19T11:07:20Z")) * 60_000, T("2026-11-19T12:00:00Z"));
 });
 
 // ---------------------------------------------------------------- mesajlar
@@ -244,7 +261,7 @@ test("gruplara bölme ve kendini çağırma", async () => {
   assert.equal(r.due, 25);
   assert.equal(r.batches, 3, "denemeler 2 iken site başı maliyet 4 → 10'arlı gruplar");
   assert.equal(selfCalls, 3);
-  assert.equal(h.db.count("runs") - before, 3);
+  assert.equal(h.db.count("runs") - before, 1, "aynı dakikadaki gruplar tek satırda birleşir");
   const st = (await call(h, "GET", "/v1/state", undefined, T("2026-11-19T11:16:00Z"))).json;
   assert.ok(st.sites.every((s: any) => s.lastCheckAt === T("2026-11-19T11:15:00Z")));
 

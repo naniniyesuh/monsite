@@ -1,44 +1,48 @@
 // Kontrol zamanlaması: tüm kontroller saat başına hizalıdır.
 //
-// - 15 / 30 / 60 dakikalık aralıklar doğrudan saate göre çalışır: 15 dk → :00 :15 :30 :45.
-// - 6 / 12 / 24 saatlik aralıklar, site eklendikten sonraki ilk tam saatten başlar ve
-//   oradan aralık kadar ilerler (ör. 14:07'de eklenen günlük kontrol her gün 15:00'te).
+// Aralık 1–60 dakika arasıdır. Kontroller her saatin başından itibaren aralığın katlarında
+// yapılır: 15 dk → :00 :15 :30 :45, 4 dk → :00 :04 … :56. 60'ı tam bölmeyen aralıklarda
+// (ör. 7 dk → :00 :07 … :56) sayım her saat başında yeniden :00'dan başlar.
+// Sunucu her dakika çalışır ve o dakikada sırası gelen siteleri kontrol eder.
 //
 // Zaman "dakika" cinsinden tutulur: Unix zamanı / 60_000.
 
-export const INTERVALS = [15, 30, 60, 360, 720, 1440] as const;
-export const TICK_MIN = 15;
+export const PRESETS = [1, 5, 10, 15, 30, 60] as const;
+export const MIN_INTERVAL = 1;
+export const MAX_INTERVAL = 60;
 
-export function isValidInterval(n: unknown): n is number {
-  return typeof n === "number" && (INTERVALS as readonly number[]).includes(n);
+/**
+ * İstemciden gelen aralığı doğrular. 2.0 sürümünün gönderebildiği 6/12/24 saatlik
+ * değerler 60 dakikaya indirilir. Geçersizse null.
+ */
+export function normalizeInterval(n: unknown): number | null {
+  if (typeof n !== "number" || !Number.isInteger(n) || n < MIN_INTERVAL || n > 1440) return null;
+  return Math.min(n, MAX_INTERVAL);
 }
 
 export function toMin(ms: number): number {
   return Math.floor(ms / 60_000);
 }
 
-/** Cron zamanını 15 dakikalık tura yuvarlar (cron birkaç saniye geç tetiklenebilir). */
+/** Cron zamanını dakikaya yuvarlar (cron birkaç saniye geç ya da erken tetiklenebilir). */
 export function tickOf(ms: number): number {
-  const m = toMin(ms + 30_000);
-  return m - (m % TICK_MIN);
+  return toMin(ms + 30_000);
 }
 
-/** Site eklendiğinde ilk hizalı kontrol dakikası. */
-export function anchorFor(intervalMin: number, createdMs: number): number {
-  const step = Math.min(intervalMin, 60);
-  const m = toMin(createdMs);
-  return m - (m % step) + step;
+/** Site eklendiğinde ya da aralığı değiştiğinde planlı kontrollerin başlayacağı dakika. */
+export function anchorFor(_intervalMin: number, createdMs: number): number {
+  return toMin(createdMs) + 1;
 }
 
 export function isDue(intervalMin: number, anchorMin: number, tickMin: number): boolean {
   if (tickMin < anchorMin) return false;
-  return (tickMin - anchorMin) % intervalMin === 0;
+  const step = Math.min(Math.max(intervalMin, 1), MAX_INTERVAL);
+  return (tickMin % 60) % step === 0;
 }
 
 /** Verilen andan sonraki ilk planlı kontrol (dakika). */
 export function nextRun(intervalMin: number, anchorMin: number, nowMs: number): number {
-  const now = toMin(nowMs);
-  if (now < anchorMin) return anchorMin;
-  const k = Math.floor((now - anchorMin) / intervalMin) + 1;
-  return anchorMin + k * intervalMin;
+  let t = Math.max(toMin(nowMs) + 1, anchorMin);
+  for (let i = 0; i < 61; i++, t++) if (isDue(intervalMin, anchorMin, t)) return t;
+  return t;
 }

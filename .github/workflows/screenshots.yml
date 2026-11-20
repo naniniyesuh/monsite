@@ -49,6 +49,7 @@ jobs:
             run $lang 02-ayrinti 8 -UpSiteOpenSite d1
             run $lang 03-sertifikalar 8 -UpSiteTab certs
             run $lang 04-ayarlar 8 -UpSiteTab settings
+            run $lang 05-ekle 8 -UpSiteAdd -UpSiteAddInterval 4
           done
           ls -la shots
 

@@ -1,6 +1,6 @@
 // Testler için Cloudflare D1 taklidi (Node'un yerleşik SQLite'ı ile).
 import { DatabaseSync } from "node:sqlite";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import type { D1Database, D1Result, D1Statement } from "../src/types.ts";
 
 function norm(v: unknown): unknown {
@@ -39,8 +39,11 @@ export class FakeD1 implements D1Database {
   db: DatabaseSync;
   constructor() {
     this.db = new DatabaseSync(":memory:");
-    const sql = readFileSync(new URL("../migrations/0001_init.sql", import.meta.url), "utf8");
-    this.db.exec(sql);
+    // Tüm geçişler sırayla (yayındaki veritabanıyla aynı şema).
+    const dir = new URL("../migrations/", import.meta.url);
+    for (const f of readdirSync(dir).filter((n) => n.endsWith(".sql")).sort()) {
+      this.db.exec(readFileSync(new URL(f, dir), "utf8"));
+    }
   }
   prepare(sql: string): D1Statement {
     return new Stmt(this.db, sql);

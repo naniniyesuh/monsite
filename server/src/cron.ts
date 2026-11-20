@@ -1,4 +1,4 @@
-// 15 dakikada bir çalışan zamanlanmış görev.
+// Her dakika çalışan zamanlanmış görev.
 
 import { isDue, tickOf } from "./schedule.ts";
 import { jobsFor, RETENTION_DAYS } from "./data.ts";

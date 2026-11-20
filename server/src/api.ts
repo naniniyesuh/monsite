@@ -1,6 +1,6 @@
 // İstemci (iOS uygulaması) için HTTP API.
 
-import { anchorFor, isValidInterval, toMin } from "./schedule.ts";
+import { anchorFor, normalizeInterval, toMin } from "./schedule.ts";
 import { getDevice, jobsFor, RETENTION_DAYS, runsOf, sha256Hex, sitesOf, siteJson, stateOf } from "./data.ts";
 import { pushConfig, runJobs, type RunOptions } from "./monitor.ts";
 import { sendPush } from "./apns.ts";
@@ -145,7 +145,7 @@ export async function handle(env: Env, req: Request, ctx: Ctx, opts: RunOptions 
     const b = await body(req);
     const siteUrl = normalizeUrl(b.url);
     if (!siteUrl) return error(400, "invalid-url");
-    const interval = isValidInterval(b.intervalMin) ? b.intervalMin : 15;
+    const interval = normalizeInterval(b.intervalMin) ?? 15;
     const existing = await sitesOf(env, device.id);
     if (existing.length >= Number(env.MAX_SITES_PER_DEVICE ?? 50)) return error(403, "site-limit");
     if (existing.some((s) => s.url === siteUrl)) return error(409, "duplicate");
@@ -172,9 +172,10 @@ export async function handle(env: Env, req: Request, ctx: Ctx, opts: RunOptions 
       const b = await body(req);
       const next = { ...site };
       if (typeof b.name === "string") next.name = cleanName(b.name, site.url);
-      if (isValidInterval(b.intervalMin) && b.intervalMin !== site.interval_min) {
-        next.interval_min = b.intervalMin;
-        next.anchor_min = anchorFor(b.intervalMin, now);
+      const iv = normalizeInterval(b.intervalMin);
+      if (iv !== null && iv !== site.interval_min) {
+        next.interval_min = iv;
+        next.anchor_min = anchorFor(iv, now);
       }
       if ("notifyDown" in b) next.notify_down = bool(b.notifyDown);
       if ("notifyUp" in b) next.notify_up = bool(b.notifyUp);

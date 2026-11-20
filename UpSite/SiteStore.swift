@@ -37,10 +37,10 @@ final class SiteStore: ObservableObject {
     var upCount: Int { sites.filter { $0.displayStatus == .up }.count }
     var nextCheck: Date? { sites.compactMap(\.nextCheck).filter { $0 > Date().addingTimeInterval(-60) }.min() }
 
-    /// Sunucu kontrolleri gecikiyor mu (son tur 35 dakikadan eski)?
+    /// Sunucu kontrolleri gecikiyor mu (son tur 5 dakikadan eski)?
     var serverLate: Bool {
         guard !demo, let lastCronAt else { return false }
-        return Date().timeIntervalSince(lastCronAt) > 35 * 60
+        return Date().timeIntervalSince(lastCronAt) > 5 * 60
     }
 
     func site(_ id: String) -> Site? { sites.first { $0.id == id } }
@@ -159,7 +159,7 @@ final class SiteStore: ObservableObject {
         for e in file.sites {
             if existing.contains(e.url.lowercased()) { skipped += 1; continue }
             do {
-                _ = try await add(url: e.url, name: e.name ?? "", interval: e.intervalMin ?? 15,
+                _ = try await add(url: e.url, name: e.name ?? "", interval: CheckInterval.clamp(e.intervalMin ?? CheckInterval.defaultValue),
                                   notifyDown: e.notifyDown ?? true, notifyUp: e.notifyUp ?? true, trackCert: true)
                 added += 1
             } catch {

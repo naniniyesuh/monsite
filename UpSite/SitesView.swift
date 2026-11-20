@@ -92,6 +92,8 @@ struct SitesView: View {
             .sheet(isPresented: $showAdd) { AddSiteView() }
             .task { if !store.loadedOnce { await store.refresh() } }
             .onAppear {
+                // Ekran görüntüleri için: -UpSiteAdd
+                if ProcessInfo.processInfo.arguments.contains("-UpSiteAdd") { showAdd = true }
                 if let id = store.openSiteId { path = [id]; store.openSiteId = nil }
             }
             .onChange(of: store.openSiteId) { id in

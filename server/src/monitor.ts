@@ -75,7 +75,10 @@ export async function runJobs(env: Env, jobs: CheckJob[], tickMin: number, opts:
   });
 
   for (const [deviceId, data] of perDevice) {
-    statements.push(env.DB.prepare("INSERT INTO runs (device_id, at_min, data) VALUES (?, ?, ?)")
+    statements.push(env.DB.prepare(
+      // Aynı dakikada aynı cihaz için ikinci bir grup ya da "şimdi kontrol et" sonuçları birleştirilir.
+      "INSERT INTO runs (device_id, at_min, data) VALUES (?, ?, ?) ON CONFLICT(device_id, at_min) DO UPDATE SET data = json_patch(runs.data, excluded.data)",
+    )
       .bind(deviceId, tickMin, JSON.stringify(data)));
   }
   if (statements.length) await env.DB.batch(statements);
