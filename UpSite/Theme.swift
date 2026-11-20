@@ -127,6 +127,45 @@ struct StatusBadge: View {
     }
 }
 
+/// Trafik ışığı gibi parlayan durum göstergesi (Siteler listesi).
+struct StatusLight: View {
+    let status: SiteStatus
+    var size: CGFloat = 12
+
+    var body: some View {
+        ZStack {
+            Circle().fill(color.opacity(lit ? 0.18 : 0)).frame(width: size * 2.3, height: size * 2.3)
+            Circle()
+                .fill(RadialGradient(colors: [color.opacity(lit ? 0.75 : 1), color],
+                                     center: UnitPoint(x: 0.35, y: 0.35), startRadius: 0, endRadius: size * 0.6))
+                .frame(width: size, height: size)
+                .shadow(color: color.opacity(lit ? 0.8 : 0), radius: size * 0.5)
+        }
+        .frame(width: 28, height: 28)
+        .accessibilityElement()
+        .accessibilityLabel(L.s(statusKey))
+    }
+
+    private var lit: Bool { status == .up || status == .down }
+
+    private var color: Color {
+        switch status {
+        case .up: return Theme.up
+        case .down: return Theme.down
+        case .paused, .unknown: return Theme.paused
+        }
+    }
+
+    private var statusKey: String {
+        switch status {
+        case .up: return "status.up"
+        case .down: return "status.down"
+        case .paused: return "status.paused"
+        case .unknown: return "status.unknown"
+        }
+    }
+}
+
 /// Son kontrollerin çubukları (soldan sağa eskiden yeniye).
 struct UptimeBars: View {
     /// true = erişilebilir, false = erişilemedi, nil = veri yok

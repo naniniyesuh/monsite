@@ -144,7 +144,7 @@ struct SiteRow: View {
 
     var body: some View {
         HStack(alignment: showBars ? .top : .center, spacing: 12) {
-            StatusBadge(status: site.displayStatus)
+            StatusLight(status: site.displayStatus)
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
                     Text(site.name).font(.body.weight(.semibold)).foregroundStyle(Theme.text).lineLimit(1)
@@ -162,12 +162,7 @@ struct SiteRow: View {
                 }
             }
             if !showBars {
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(site.codeText)
-                        .font(.footnote.weight(.bold))
-                        .foregroundStyle(site.displayStatus == .up ? Theme.up : Theme.text3)
-                    Text(CheckInterval.label(site.intervalMin)).font(.caption).foregroundStyle(Theme.text3)
-                }
+                Text(CheckInterval.label(site.intervalMin)).font(.caption).foregroundStyle(Theme.text3)
             }
         }
         .padding(.vertical, 4)
