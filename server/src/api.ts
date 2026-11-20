@@ -3,7 +3,7 @@
 import { anchorFor, normalizeInterval, toMin } from "./schedule.ts";
 import { getDevice, jobsFor, RETENTION_DAYS, runsOf, sha256Hex, sitesOf, siteJson, stateOf } from "./data.ts";
 import { pushConfig, runJobs, type RunOptions } from "./monitor.ts";
-import { sendPush } from "./apns.ts";
+import { pushResultText, sendPushAnyEnv } from "./apns.ts";
 import { langOf, testMessage } from "./messages.ts";
 import type { Ctx, DeviceRow, Env, SiteRow } from "./types.ts";
 
@@ -133,9 +133,11 @@ export async function handle(env: Env, req: Request, ctx: Ctx, opts: RunOptions 
     const cfg = pushConfig(env);
     if (!cfg) return error(503, "push-not-configured");
     if (!device.apns_token) return error(409, "no-token");
-    const res = await sendPush(cfg, device.apns_token, device.apns_env, { ...testMessage(langOf(device.lang)), quiet: false },
+    const res = await sendPushAnyEnv(cfg, device.apns_token, device.apns_env, { ...testMessage(langOf(device.lang)), quiet: false },
       Math.floor(now / 1000), opts.fetchFn);
-    if (res.outcome === "invalid-token") {
+    await env.DB.prepare("UPDATE devices SET push_at = ?, push_result = ?, apns_env = ? WHERE id = ?")
+      .bind(now, pushResultText(res), res.env, device.id).run();
+    if (res.outcome === "invalid-token" && res.reason !== "BadDeviceToken") {
       await env.DB.prepare("UPDATE devices SET apns_token = NULL WHERE id = ?").bind(device.id).run();
     }
     return json({ outcome: res.outcome, status: res.status, reason: res.reason ?? null }, res.outcome === "sent" ? 200 : 502);

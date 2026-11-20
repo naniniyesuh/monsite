@@ -71,6 +71,32 @@ export interface PushConfig {
 
 export type PushOutcome = "sent" | "invalid-token" | "failed";
 
+export interface PushResult { outcome: PushOutcome; status: number; reason?: string; env: string }
+
+/**
+ * Önce kayıtlı ortama gönderir. Apple "BadDeviceToken" derse anahtar diğer ortama aittir
+ * (ör. Xcode'dan kurulan sürümden App Store sürümüne geçiş); bir kez diğer ortam denenir.
+ */
+export async function sendPushAnyEnv(
+  cfg: PushConfig,
+  token: string,
+  env: string,
+  msg: PushMessage,
+  nowSec: number,
+  fetchFn: FetchFn = fetch,
+): Promise<PushResult> {
+  const first = await sendPush(cfg, token, env, msg, nowSec, fetchFn);
+  if (first.reason !== "BadDeviceToken") return { ...first, env };
+  const other = env === "sandbox" ? "production" : "sandbox";
+  const second = await sendPush(cfg, token, other, msg, nowSec, fetchFn);
+  return second.outcome === "sent" ? { ...second, env: other } : { ...first, env };
+}
+
+/** Cihaz kaydına yazılan kısa sonuç: "sent" ya da "<durum> <neden>". */
+export function pushResultText(r: PushResult): string {
+  return r.outcome === "sent" ? "sent" : `${r.status || "network"} ${r.reason ?? ""}`.trim().slice(0, 120);
+}
+
 export async function sendPush(
   cfg: PushConfig,
   token: string,

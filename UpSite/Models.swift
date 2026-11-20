@@ -53,8 +53,10 @@ struct Site: Identifiable, Codable, Hashable {
 }
 
 struct SiteState: Codable {
+    struct PushInfo: Codable { var at: Double; var result: String }
     var serverTime: Double
     var lastCronAt: Double?
+    var lastPush: PushInfo?
     var sites: [Site]
 }
 

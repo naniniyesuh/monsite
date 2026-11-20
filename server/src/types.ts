@@ -50,6 +50,8 @@ export interface DeviceRow {
   quiet_end: string | null;
   created_at: number;
   last_seen: number;
+  push_at?: number | null;
+  push_result?: string | null;
 }
 
 export interface SiteRow {

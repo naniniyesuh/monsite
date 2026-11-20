@@ -86,9 +86,12 @@ export async function stateOf(env: Env, deviceId: string, nowMs: number) {
     }
   }
   const lastCron = await env.DB.prepare("SELECT value FROM meta WHERE key = 'last_cron'").first<{ value: string }>();
+  const push = await env.DB.prepare("SELECT push_at, push_result FROM devices WHERE id = ?")
+    .bind(deviceId).first<{ push_at: number | null; push_result: string | null }>();
   return {
     serverTime: nowMs,
     lastCronAt: lastCron ? Number(lastCron.value) : null,
+    lastPush: push?.push_at ? { at: push.push_at, result: push.push_result ?? "" } : null,
     sites: sites.map((s) => siteJson(s, nowMs, bySite.get(s.id) ?? [])),
   };
 }

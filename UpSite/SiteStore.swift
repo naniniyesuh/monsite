@@ -10,6 +10,8 @@ final class SiteStore: ObservableObject {
 
     @Published private(set) var sites: [Site] = []
     @Published private(set) var lastCronAt: Date?
+    /// Sunucunun bu cihaza son bildirim denemesi (zaman, "sent" ya da hata).
+    @Published private(set) var lastPush: SiteState.PushInfo?
     @Published private(set) var loading = false
     @Published private(set) var loadedOnce = false
     @Published var lastError: String?
@@ -56,6 +58,7 @@ final class SiteStore: ObservableObject {
             let s = try await api.state()
             sites = s.sites
             lastCronAt = s.lastCronAt.map { Date(timeIntervalSince1970: $0 / 1000) }
+            lastPush = s.lastPush
             lastRefresh = Date()
             lastError = nil
         } catch {

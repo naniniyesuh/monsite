@@ -103,6 +103,7 @@ interface Harness {
   fetchFn: (input: string, init?: RequestInit) => Promise<Response>;
   waits: Promise<unknown>[];
   apnsStatus: { code: number; reason?: string };
+  apnsByHost?: Record<string, { code: number; reason?: string }>;
 }
 
 async function harness(): Promise<Harness> {
@@ -120,7 +121,8 @@ async function harness(): Promise<Harness> {
       const headers: Record<string, string> = {};
       new Headers(init?.headers).forEach((v, k) => { headers[k] = v; });
       h.pushes.push({ token: u.pathname.split("/").pop() as string, host: u.hostname, headers, body: JSON.parse(String(init?.body)) });
-      return new Response(h.apnsStatus.reason ? JSON.stringify({ reason: h.apnsStatus.reason }) : null, { status: h.apnsStatus.code });
+      const st = h.apnsByHost?.[u.hostname] ?? h.apnsStatus;
+      return new Response(st.reason ? JSON.stringify({ reason: st.reason }) : null, { status: st.code });
     }
     const s = h.siteStatus.get(u.hostname) ?? 200;
     if (s === "timeout") { const e = new Error("The operation was aborted due to timeout"); e.name = "TimeoutError"; throw e; }
@@ -296,4 +298,30 @@ test("şimdi kontrol et, test bildirimi, geçmişi ve verileri silme", async () 
   assert.equal((await call(h, "DELETE", "/v1/device")).status, 200);
   assert.equal(h.db.count("devices"), 0);
   assert.equal(h.db.count("sites"), 0);
+});
+
+test("yanlış ortamdaki jeton: diğer ortam denenir, jeton silinmez, sonuç kaydedilir", async () => {
+  const h = await harness();
+  await call(h, "POST", "/v1/register", { deviceId: DEV, secret: SECRET }, undefined, {});
+  // Uygulama "production" dedi ama jeton aslında Xcode (sandbox) jetonu
+  await call(h, "PUT", "/v1/device", { apnsToken: "ef".repeat(32), apnsEnv: "production", retries: 0 });
+  await call(h, "POST", "/v1/sites", { url: "api.example.com", intervalMin: 5 });
+  h.siteStatus.set("api.example.com", 503);
+  h.apnsByHost = { "api.push.apple.com": { code: 400, reason: "BadDeviceToken" } };
+  await tick(h, "2026-11-19T11:15:00Z");
+  assert.deepEqual(h.pushes.map((p) => p.host), ["api.push.apple.com", "api.sandbox.push.apple.com"]);
+  const dev = h.db.db.prepare("SELECT apns_token, apns_env, push_result FROM devices").get() as any;
+  assert.equal(dev.apns_token, "ef".repeat(32));
+  assert.equal(dev.apns_env, "sandbox");
+  assert.equal(dev.push_result, "sent");
+  const st = (await call(h, "GET", "/v1/state", undefined, T("2026-11-19T11:16:00Z"))).json;
+  assert.equal(st.lastPush.result, "sent");
+
+  // Anahtar hatası gibi bir sorun kaydedilir ve Ayarlar'da görünür
+  h.apnsByHost = undefined;
+  h.apnsStatus = { code: 403, reason: "InvalidProviderToken" };
+  const r = await call(h, "POST", "/v1/push/test", {}, T("2026-11-19T11:20:00Z"));
+  assert.equal(r.status, 502);
+  const st2 = (await call(h, "GET", "/v1/state", undefined, T("2026-11-19T11:21:00Z"))).json;
+  assert.equal(st2.lastPush.result, "403 InvalidProviderToken");
 });

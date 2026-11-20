@@ -292,6 +292,10 @@ struct ServerStatusView: View {
                 row(L.s("server.lastRun"), store.lastCronAt.map { SiteText.relative($0) } ?? "—")
                 row(L.s("server.lastRefresh"), store.lastRefresh.map { SiteText.relative($0) } ?? "—")
                 row(L.s("server.push"), store.pushToken == nil ? L.s("server.push.none") : L.s("server.push.ok"))
+                if let p = store.lastPush {
+                    let when = SiteText.relative(Date(timeIntervalSince1970: p.at / 1000))
+                    row(L.s("server.lastPush"), p.result == "sent" ? L.s("server.lastPush.sent", when) : L.s("server.lastPush.failed", when, p.result))
+                }
                 if let e = store.lastError { Text(e).font(.footnote).foregroundStyle(Theme.warn) }
             } footer: { Text(L.s("server.footer")) }
             .themedRows()

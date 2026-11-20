@@ -1,7 +1,7 @@
 // Kontrolleri çalıştırır, durum değişikliklerini kaydeder ve bildirim gönderir.
 
 import { checkWithRetries } from "./check.ts";
-import { sendPush, type PushConfig } from "./apns.ts";
+import { pushResultText, sendPushAnyEnv, type PushConfig } from "./apns.ts";
 import { downMessage, inQuietHours, langOf, upMessage } from "./messages.ts";
 import type { CheckJob, CheckResult, D1Statement, DeviceRow, Env, SiteRow } from "./types.ts";
 
@@ -85,6 +85,7 @@ export async function runJobs(env: Env, jobs: CheckJob[], tickMin: number, opts:
 
   const cfg = pushConfig(env);
   const invalid: string[] = [];
+  const pushLog: D1Statement[] = [];
   if (cfg) {
     await Promise.all(transitions.filter((t) => t.notify && t.device.apns_token).map(async (t) => {
       const lang = langOf(t.device.lang);
@@ -92,16 +93,18 @@ export async function runJobs(env: Env, jobs: CheckJob[], tickMin: number, opts:
         ? downMessage(t.site.name, t.result.code, t.result.error, t.result.attempts, nowMs, t.device.tz, lang)
         : upMessage(t.site.name, t.site.status_since, nowMs, lang);
       const quiet = inQuietHours(nowMs, t.device.tz, t.device.quiet_start, t.device.quiet_end);
-      const res = await sendPush(cfg, t.device.apns_token as string, t.device.apns_env, {
+      const res = await sendPushAnyEnv(cfg, t.device.apns_token as string, t.device.apns_env, {
         ...text, quiet, threadId: t.site.id, data: { siteId: t.site.id, kind: t.to },
       }, Math.floor(nowMs / 1000), fetchFn);
-      if (res.outcome === "invalid-token") invalid.push(t.device.id);
+      pushLog.push(env.DB.prepare("UPDATE devices SET push_at = ?, push_result = ?, apns_env = ? WHERE id = ?")
+        .bind(nowMs, pushResultText(res), res.env, t.device.id));
+      // Yalnızca Apple jetonun artık geçerli olmadığını kesin söylediğinde silinir.
+      if (res.outcome === "invalid-token" && res.reason !== "BadDeviceToken") invalid.push(t.device.id);
     }));
   }
-  if (invalid.length) {
-    await env.DB.batch([...new Set(invalid)].map((id) =>
-      env.DB.prepare("UPDATE devices SET apns_token = NULL WHERE id = ?").bind(id)));
-  }
+  const after = [...pushLog, ...[...new Set(invalid)].map((id) =>
+    env.DB.prepare("UPDATE devices SET apns_token = NULL WHERE id = ?").bind(id))];
+  if (after.length) await env.DB.batch(after);
   return transitions;
 }
 
