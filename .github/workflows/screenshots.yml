@@ -43,6 +43,14 @@ jobs:
             xcrun simctl launch "$UDID" $BID -UpSiteDemo -language $lang -AppleLanguages "($lang)" -AppleLocale $loc "$@"
             sleep "$wait"
             xcrun simctl io "$UDID" screenshot "shots/$lang-$name.png"
+            # Simülatör bazen ekranı çizmeden görüntü alıyor (tamamen siyah): bir kez daha dene
+            if python3 -c "import sys,zlib,struct; d=open(sys.argv[1],'rb').read(); print(len(d))" "shots/$lang-$name.png" | awk '{exit !($1 < 120000)}'; then
+              echo "siyah görünüyor, tekrar: $lang-$name"
+              xcrun simctl launchctl "$UDID" list >/dev/null 2>&1 || true
+              pgrep -lf "UpSite" || echo "uygulama çalışmıyor (çökmüş olabilir)"
+              sleep 10
+              xcrun simctl io "$UDID" screenshot "shots/$lang-$name.png"
+            fi
           }
           for lang in tr en; do
             run $lang 01-siteler 15
@@ -52,6 +60,16 @@ jobs:
             run $lang 05-ekle 15 -UpSiteAdd -UpSiteAddInterval 3
           done
           ls -la shots
+          mkdir -p crash && cp ~/Library/Logs/DiagnosticReports/UpSite* crash/ 2>/dev/null || true
+          ls crash
+
+      - name: Çökme kayıtları
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crash-reports
+          path: crash
+          if-no-files-found: ignore
 
       - name: Görüntüleri screenshots dalına gönder
         run: |
