@@ -81,6 +81,37 @@ Değişenler: durum ışıkları, 2–60 dakikalık kontrol aralıkları, zorunl
 
 ---
 
+## 1c. Sürüm 2.1 (5)
+
+Değişenler: paketler (siteleri ekiple paylaşma), açılış animasyonu, yönetici ekranı (yalnızca sizin cihazınızda), site ayrıntısında adrese dokununca tarayıcıda açma ve sıklığı değiştirme, sadeleşen Siteler ekranı, sertifikaların günde bir kez kontrolü. Dışa/içe aktarma kaldırıldı.
+
+1. **Sunucu** 2.1'den önce yayına alınır (eski sürümlerle uyumlu; mevcut siteler "Sitelerim" paketine taşınır).
+2. **Gizlilik politikası** alpp.studio'da güncellenir (paylaşılan paketler, geliştiricinin paket ve adresleri görebilmesi).
+3. **Uygulama Gizliliği** (App Store Connect): "Diğer Kullanıcı İçeriği" için kullanım amaçlarına **Analitik**'i de ekleyin (bölüm 4). Kimliğe bağlı değil, takip yok — değişmez.
+4. **İnceleme için paket:** Telefonunuzda "App Review" adlı bir paket oluşturup içine 2–3 site ekleyin; anahtarını inceleme notundaki `XXXX-XXXX-XXXX` yerine yazın.
+5. Xcode → Archive → yükle → App Store Connect'te **2.1** sürümü → aşağıdaki "Yenilikler", güncel açıklama (bölüm 2), inceleme notu (bölüm 5) → derleme 2.1 (5) → **İncelemeye Gönder**.
+6. 2.1 yayınlanınca sunucuda `MIN_APP_BUILD = "5"` yapılır; 2.0.1 kullanıcıları güncellemeye yönlendirilir.
+
+**Bu sürümdeki yenilikler**
+```
+• Paketler: sitelerinizi ekibinizle paylaşın. Bir paket oluşturun, katılım anahtarını gönderin; herkes aynı siteleri görür, bildirimlerini kendisi seçer.
+• Site ayrıntısında adrese dokunarak siteyi tarayıcıda açın, sıklığa dokunarak hemen değiştirin
+• Yeni açılış animasyonu; sertifikalar günde bir kez, açılışta kontrol edilir
+• Daha sade Siteler ekranı ve daha anlaşılır süre ifadeleri
+• Site listesini dışa/içe aktarma kaldırıldı; paket anahtarı bu işi görüyor
+```
+
+**What's New**
+```
+• Packages: share your sites with your team. Create a package and send its join key; everyone sees the same sites and chooses their own notifications.
+• In site details, tap the address to open the site in your browser, or tap the interval to change it
+• New launch animation; certificates are checked once a day when you open the app
+• A cleaner Sites screen and clearer durations
+• Site list export/import was removed; the package key does the job now
+```
+
+---
+
 ## 2. Mağaza metinleri
 
 ### Türkçe
@@ -145,10 +176,15 @@ SERTİFİKALAR
 • Sertifikayı yenilediğinizde tek dokunuşla yeniden kontrol edin, "Yenilendi" etiketiyle hemen görün
 • Bitişe seçtiğiniz gün sayısı kala hatırlatma
 
-GİZLİLİK
-Hesap açmanız gerekmez. Ad, e-posta ya da telefon numarası istenmez; reklam ve takip yoktur. Sunucuda yalnızca izlediğiniz adresler, kontrol sonuçları ve bildirim kaydı tutulur; tümünü uygulamadan tek dokunuşla silebilirsiniz.
+EKİPLE PAYLAŞIN
+• Paket oluşturun, katılım anahtarını ekibinize gönderin
+• Herkes aynı siteleri görür, her site bir kez kontrol edilir
+• Bildirimleri herkes kendisi açıp kapatır
 
-Cihaz başına en fazla 50 site eklenebilir.
+GİZLİLİK
+Hesap açmanız gerekmez. Ad, e-posta ya da telefon numarası istenmez; reklam ve takip yoktur. Sunucuda yalnızca paketleriniz, izlediğiniz adresler, kontrol sonuçları ve bildirim kaydı tutulur; tümünü uygulamadan tek dokunuşla silebilirsiniz.
+
+Bir pakete en fazla 50 site eklenebilir.
 ```
 
 **Anahtar kelimeler** (100, virgülle, boşluksuz)
@@ -228,10 +264,15 @@ CERTIFICATES
 • Recheck with one tap after renewing and see the "Renewed" badge right away
 • Reminders the number of days you choose before expiry
 
-PRIVACY
-No account needed. No name, email or phone number, no ads, no tracking. The server stores only the addresses you monitor, check results and your notification registration, and you can delete all of it from the app with one tap.
+SHARE WITH YOUR TEAM
+• Create a package and send its join key to your team
+• Everyone sees the same sites, and each site is checked once
+• Everyone turns their own notifications on or off
 
-Up to 50 sites per device.
+PRIVACY
+No account needed. No name, email or phone number, no ads, no tracking. The server stores only your packages, the addresses you monitor, check results and your notification registration, and you can delete all of it from the app with one tap.
+
+Up to 50 sites per package.
 ```
 
 **Keywords**
@@ -268,7 +309,7 @@ Sonuç: **4+**
   - **Kullanıcı İçeriği → Diğer Kullanıcı İçeriği** (izlenen site adresleri ve adları)
   - **Tanımlayıcılar → Cihaz Kimliği** (uygulamanın ürettiği anonim kimlik ve bildirim anahtarı)
 - Her biri için:
-  - Kullanım amacı: **Uygulama İşlevselliği** (yalnızca bu)
+  - Kullanım amacı: **Uygulama İşlevselliği**; 2.1'den itibaren **Diğer Kullanıcı İçeriği** için ayrıca **Analitik** (geliştirici paket adlarını ve adresleri hizmeti geliştirmek için görebiliyor)
   - Kullanıcının kimliğine bağlı mı? **Hayır**
   - Takip için kullanılıyor mu? **Hayır**
 
@@ -291,15 +332,18 @@ Sites are checked by our own backend (Cloudflare Workers) at the interval the us
 How to test:
 1. Allow notifications when asked (the prompt appears after adding the first site).
 2. On the "Sites" tab, tap + and add any site, e.g. example.com. The first check runs immediately and the result appears within a few seconds.
-3. Open the site to see its status, the last 7 days of checks, and notification toggles. "Check now" runs a check on demand.
+3. Open the site to see its status, the last 7 days of checks, and notification toggles. "Check now" runs a check on demand. Tapping the address opens the site in Safari; tapping the interval changes it.
 4. Settings → "Send test notification" sends a push through the backend.
-5. The "Certificates" tab shows SSL certificate expiry dates. These are checked directly from the device when the app opens; tap refresh to recheck.
+5. The "Certificates" tab shows SSL certificate expiry dates. These are checked directly from the device once a day when the app opens; tap refresh to recheck.
+6. Packages (sharing sites with a team): Settings → "Join a package" and enter XXXX-XXXX-XXXX to join our sample package with a few sites. Settings → "Create a package" creates your own package with a key you can share.
+
+Settings shows an "Admin" item only on the developer's own device (configured on the server) to monitor service capacity: package count, sites and new-package notices. It isn't available to other users.
 
 To see a site go down, add an address that returns an error, e.g. httpbin.org/status/503.
 
 Push notifications are used only for the user's own site alerts; there is no marketing content.
 
-Data: The backend stores an anonymous random device ID, the monitored site addresses, check results and the push token. There is no account and no personal information. Settings → "Delete all my data" removes everything from the server.
+Data: The backend stores an anonymous random device ID, package names and join keys, the monitored site addresses, check results and the push token. There is no account and no personal information. Settings → "Delete all my data" removes everything from the server.
 
 Contact: help@alpp.studio
 ```
