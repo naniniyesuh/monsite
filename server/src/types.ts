@@ -29,6 +29,7 @@ export interface Env {
   INTERNAL_KEY?: string;
   MAX_SITES_PER_DEVICE?: string;
   MAX_DEVICES?: string;
+  MIN_APP_BUILD?: string;
 }
 
 export interface Ctx {

@@ -24,6 +24,8 @@ service = "upsite-api"
 APNS_TOPIC = "studio.alpp.monsite"
 MAX_SITES_PER_DEVICE = "50"
 MAX_DEVICES = "500"
+# Bu derleme numarasının altındaki uygulamalar "Güncelleme gerekli" ekranı gösterir (2.0.1 ve sonrası).
+MIN_APP_BUILD = "4"
 
 # Gizli değerler (wrangler secret put ile):
 #   APNS_KEY      .p8 dosyasının içeriği

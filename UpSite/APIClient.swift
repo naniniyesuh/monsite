@@ -201,4 +201,5 @@ enum AppInfo {
     static let supportURL = URL(string: "https://alpp.studio/upsite/")!
     static let privacyURL = URL(string: "https://alpp.studio/upsite/privacy/")!
     static let supportEmail = "help@alpp.studio"
+    static let appStoreURL = URL(string: "itms-apps://apps.apple.com/app/id6830828921")!
 }

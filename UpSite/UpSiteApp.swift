@@ -95,8 +95,17 @@ struct UpSiteApp: App {
 
 struct RootView: View {
     @EnvironmentObject private var router: RootRouter
+    @EnvironmentObject private var store: SiteStore
 
     var body: some View {
+        if store.updateRequired {
+            UpdateRequiredView()
+        } else {
+            tabs
+        }
+    }
+
+    private var tabs: some View {
         TabView(selection: $router.tab) {
             SitesView()
                 .tabItem { Label(L.s("tab.sites"), systemImage: "waveform.path.ecg") }
@@ -110,5 +119,31 @@ struct RootView: View {
         }
         .toolbarBackground(Theme.tabBar, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
+    }
+}
+
+/// Sunucu daha yeni bir sürüm istediğinde uygulamanın tamamını kaplayan ekran.
+struct UpdateRequiredView: View {
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Spacer()
+            LogoMark(size: 88)
+            Text(L.s("update.title"))
+                .font(.title2.weight(.bold))
+                .foregroundStyle(Theme.text)
+                .multilineTextAlignment(.center)
+            Text(L.s("update.body"))
+                .font(.body)
+                .foregroundStyle(Theme.text2)
+                .multilineTextAlignment(.center)
+            Spacer()
+            Button(L.s("update.button")) { openURL(AppInfo.appStoreURL) }
+                .buttonStyle(PrimaryButtonStyle())
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.bg.ignoresSafeArea())
     }
 }

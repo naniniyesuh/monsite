@@ -12,6 +12,10 @@ final class SiteStore: ObservableObject {
     @Published private(set) var lastCronAt: Date?
     /// Sunucunun bu cihaza son bildirim denemesi (zaman, "sent" ya da hata).
     @Published private(set) var lastPush: SiteState.PushInfo?
+    /// Sunucunun istediği en düşük derleme; bunun altındaysa "Güncelleme gerekli" ekranı gösterilir.
+    /// Çevrimdışı açılışta da geçerli olsun diye saklanır.
+    @Published private(set) var minBuild = UserDefaults.standard.integer(forKey: "minBuild")
+    var updateRequired: Bool { !demo && (Int(AppInfo.build) ?? 0) < minBuild }
     @Published private(set) var loading = false
     @Published private(set) var loadedOnce = false
     @Published var lastError: String?
@@ -59,6 +63,10 @@ final class SiteStore: ObservableObject {
             sites = s.sites
             lastCronAt = s.lastCronAt.map { Date(timeIntervalSince1970: $0 / 1000) }
             lastPush = s.lastPush
+            if let m = s.minBuild, m != minBuild {
+                minBuild = m
+                UserDefaults.standard.set(m, forKey: "minBuild")
+            }
             lastRefresh = Date()
             lastError = nil
         } catch {

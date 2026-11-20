@@ -80,7 +80,7 @@ struct AddSiteView: View {
                 }
             }
             .onAppear {
-                // Ekran görüntüleri için: -UpSiteAddInterval 4
+                // Ekran görüntüleri için: -UpSiteAddInterval 3
                 let args = ProcessInfo.processInfo.arguments
                 if let i = args.firstIndex(of: "-UpSiteAddInterval"), i + 1 < args.count, let m = Int(args[i + 1]) {
                     url = "example.com"

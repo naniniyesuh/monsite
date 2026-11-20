@@ -57,6 +57,7 @@ struct SiteState: Codable {
     var serverTime: Double
     var lastCronAt: Double?
     var lastPush: PushInfo?
+    var minBuild: Int?
     var sites: [Site]
 }
 

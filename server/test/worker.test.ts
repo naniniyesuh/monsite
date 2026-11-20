@@ -314,6 +314,8 @@ test("yanlış ortamdaki jeton: diğer ortam denenir, jeton silinmez, sonuç kay
   const r = await call(h, "POST", "/v1/push/test", {}, T("2026-11-19T11:20:00Z"));
   assert.equal(r.status, 200);
   assert.equal(r.json.reason, "InvalidProviderToken");
+  h.env.MIN_APP_BUILD = "4";
   const st2 = (await call(h, "GET", "/v1/state", undefined, T("2026-11-19T11:21:00Z"))).json;
+  assert.equal(st2.minBuild, 4);
   assert.equal(st2.lastPush.result, "403 InvalidProviderToken");
 });

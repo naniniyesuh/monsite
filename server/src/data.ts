@@ -92,6 +92,7 @@ export async function stateOf(env: Env, deviceId: string, nowMs: number) {
     serverTime: nowMs,
     lastCronAt: lastCron ? Number(lastCron.value) : null,
     lastPush: push?.push_at ? { at: push.push_at, result: push.push_result ?? "" } : null,
+    minBuild: Number(env.MIN_APP_BUILD ?? 0) || 0,
     sites: sites.map((s) => siteJson(s, nowMs, bySite.get(s.id) ?? [])),
   };
 }
