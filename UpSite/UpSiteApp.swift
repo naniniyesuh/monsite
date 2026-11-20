@@ -98,10 +98,9 @@ struct RootView: View {
     @EnvironmentObject private var store: SiteStore
 
     var body: some View {
-        if store.updateRequired {
-            UpdateRequiredView()
-        } else {
-            tabs
+        // TabView her zaman yerinde kalır; güncelleme ekranı üstüne kapanır.
+        tabs.overlay {
+            if store.updateRequired { UpdateRequiredView() }
         }
     }
 
