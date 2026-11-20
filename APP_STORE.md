@@ -50,6 +50,37 @@ Her yüklemede **Build** artmalı (Xcode → UpSite hedefi → General → Build
 
 ---
 
+## 1b. Sürüm 2.0.1 (4)
+
+Değişenler: durum ışıkları, 2–60 dakikalık kontrol aralıkları, zorunlu güncelleme ekranı, Sunucu durumu'nda son bildirim satırı.
+
+1. `git pull` → Xcode → **Any iOS Device (arm64)** → **Product → Archive** → **Distribute App** → **App Store Connect**.
+2. App Store Connect → UpSite → **+** → sürüm `2.0.1`.
+3. **Bu sürümdeki yenilikler** (aşağıda) ve **Açıklama**'yı her iki dilde güncelleyin; açıklamadaki "SİZİN SEÇTİĞİNİZ SIKLIK" maddeleri değişti (bölüm 2).
+4. Ekran görüntülerini yenileyin (Siteler ekranı değişti).
+5. Derleme olarak 2.0.1 (4)'ü seçin → **İncelemeye Gönder**.
+6. Onaylanınca **Bu sürümü yayınla**. Gizlilik, yaş derecelendirmesi ve inceleme notu aynı kalır.
+
+**Zorunlu güncelleme:** Sunucudaki `MIN_APP_BUILD` (server/wrangler.toml) değerinin altındaki derlemeler açılışta "Güncelleme gerekli" ekranı gösterir. Bu özellik 2.0.1 ile geldiği için 2.0 kullanıcıları zorlanamaz; onlar iOS otomatik güncellemesiyle geçer. İleride bir sürümü zorunlu yapmak için: sürüm App Store'da **yayınlandıktan sonra** `MIN_APP_BUILD`'i o sürümün derleme numarasına çekip Server iş akışını çalıştırın. Yayından önce yaparsanız App Store'daki sürüm kendini kilitler.
+
+**Bu sürümdeki yenilikler**
+```
+• Daha kısa kontrol aralıkları: 2, 3, 5, 15, 30 dakika ve 1 saat
+• Siteler listesinde her sitenin durumu artık renkli bir ışıkla gösteriliyor
+• Bildirim gönderimi iyileştirildi; son bildirimin durumu Ayarlar → Sunucu durumu'nda görünüyor
+• Hata düzeltmeleri
+```
+
+**What's New**
+```
+• Shorter check intervals: 2, 3, 5, 15, 30 minutes and 1 hour
+• Each site's status in the Sites list is now shown with a colored light
+• More reliable notifications; the last notification's status appears in Settings → Server status
+• Bug fixes
+```
+
+---
+
 ## 2. Mağaza metinleri
 
 ### Türkçe
@@ -91,8 +122,8 @@ TELEFONUNUZ KİLİTLİYKEN DE ÇALIŞIR
 Kontroller telefonunuzda değil UpSite sunucusunda yapılır. Uygulamayı kapatsanız da, telefonunuz kilitli olsa da kesinti bildirimleri gelir.
 
 SİZİN SEÇTİĞİNİZ SIKLIK
-• 15 dakika, 30 dakika, 1 saat, 6 saat, 12 saat veya 1 gün
-• Kontroller saat başına hizalıdır: 15 dakikada bir :00, :15, :30, :45'te
+• 2, 3, 5, 15 veya 30 dakika ya da 1 saat
+• Kontroller saat başına hizalıdır: 15 dakikada bir :00, :15, :30, :45'te; 3 dakikada bir :00, :03, :06…
 • Siteyi eklediğiniz anda ilk kontrol yapılır
 
 NET KURAL
@@ -174,8 +205,8 @@ WORKS WHILE YOUR PHONE IS LOCKED
 Checks run on the UpSite server, not on your phone. You get downtime alerts even when the app is closed or your phone is locked.
 
 YOUR INTERVAL
-• 15 minutes, 30 minutes, 1 hour, 6 hours, 12 hours or 1 day
-• Checks are aligned to the hour: every 15 minutes means :00, :15, :30, :45
+• 2, 3, 5, 15 or 30 minutes, or 1 hour
+• Checks are aligned to the hour: every 15 minutes means :00, :15, :30, :45; every 3 minutes means :00, :03, :06…
 • The first check runs as soon as you add a site
 
 A CLEAR RULE
