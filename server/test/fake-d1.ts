@@ -37,12 +37,16 @@ class Stmt implements D1Statement {
 
 export class FakeD1 implements D1Database {
   db: DatabaseSync;
-  constructor() {
+  constructor(opts: { before?: string } = {}) {
     this.db = new DatabaseSync(":memory:");
-    // Tüm geçişler sırayla (yayındaki veritabanıyla aynı şema).
+    this.db.exec("PRAGMA foreign_keys = ON"); // D1'de olduğu gibi
+    this.migrate(opts.before ? (f) => f < opts.before! : () => true);
+  }
+  /** Geçişleri sırayla uygular (yayındaki veritabanıyla aynı şema). */
+  migrate(which: (file: string) => boolean = () => true): void {
     const dir = new URL("../migrations/", import.meta.url);
     for (const f of readdirSync(dir).filter((n) => n.endsWith(".sql")).sort()) {
-      this.db.exec(readFileSync(new URL(f, dir), "utf8"));
+      if (which(f)) this.db.exec(readFileSync(new URL(f, dir), "utf8"));
     }
   }
   prepare(sql: string): D1Statement {

@@ -26,6 +26,13 @@ MAX_SITES_PER_DEVICE = "50"
 MAX_DEVICES = "500"
 # Bu derleme numarasının altındaki uygulamalar "Güncelleme gerekli" ekranı gösterir (2.0.1 ve sonrası).
 MIN_APP_BUILD = "4"
+# Paket sınırları
+MAX_SITES_PER_PACKAGE = "50"
+MAX_PACKAGES_PER_DEVICE = "5"
+MAX_MEMBERS = "20"
+MAX_PACKAGES = "300"
+# Yönetici ekranını görebilecek cihaz kimlikleri (virgülle). Kimlik tek başına yetki vermez; cihazın gizli anahtarı da gerekir.
+ADMIN_DEVICE_IDS = ""
 
 # Gizli değerler (wrangler secret put ile):
 #   APNS_KEY      .p8 dosyasının içeriği

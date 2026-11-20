@@ -263,9 +263,10 @@ test("gruplara bölme ve kendini çağırma", async () => {
 });
 
 test("makeBatches maliyet hesabı", () => {
-  const job = (retries: number) => ({ site: { id: "x" }, device: { retries } }) as unknown as CheckJob;
+  const job = (retries: number, members = 1) => ({ site: { id: "x" }, pkg: { retries }, members }) as unknown as CheckJob;
   assert.equal(makeBatches(Array.from({ length: 45 }, () => job(0))).length, 3);
   assert.equal(makeBatches(Array.from({ length: 10 }, () => job(3))).length, 2);
+  assert.equal(makeBatches(Array.from({ length: 4 }, () => job(2, 20))).length, 4, "kalabalık pakette her site kendi grubunda");
 });
 
 test("şimdi kontrol et, test bildirimi, geçmişi ve verileri silme", async () => {
@@ -318,4 +319,133 @@ test("yanlış ortamdaki jeton: diğer ortam denenir, jeton silinmez, sonuç kay
   const st2 = (await call(h, "GET", "/v1/state", undefined, T("2026-11-19T11:21:00Z"))).json;
   assert.equal(st2.minBuild, 4);
   assert.equal(st2.lastPush.result, "403 InvalidProviderToken");
+});
+
+// ---------------------------------------------------------------- paketler
+
+const DEV2 = "dev-0002-bbbb";
+const AUTH2 = { authorization: `Bearer ${DEV2}.${SECRET}` };
+
+test("paket: oluştur, anahtarla katıl, ortak kontrol, kişisel bildirim tercihi", async () => {
+  const h = await harness();
+  await call(h, "POST", "/v1/register", { deviceId: DEV, secret: SECRET }, undefined, {});
+  await call(h, "POST", "/v1/register", { deviceId: DEV2, secret: SECRET }, undefined, {});
+  await call(h, "PUT", "/v1/device", { apnsToken: "aa".repeat(32), lang: "tr" });
+  await call(h, "PUT", "/v1/device", { apnsToken: "bb".repeat(32), lang: "en" }, undefined, AUTH2);
+
+  const pkg = (await call(h, "POST", "/v1/packages", { name: "Ekip" })).json;
+  assert.equal(pkg.name, "Ekip");
+  assert.equal(pkg.isOwner, true);
+  assert.match(pkg.key, /^[2-9A-HJ-NP-Z]{12}$/);
+
+  const site = (await call(h, "POST", "/v1/sites", { packageId: pkg.id, url: "shop.example.com", intervalMin: 15 })).json;
+  assert.equal(site.packageId, pkg.id);
+
+  // Yanlış anahtar, sonra tireli/küçük harfli doğru anahtar
+  assert.equal((await call(h, "POST", "/v1/packages/join", { key: "XXXX-XXXX-XXXX" }, undefined, AUTH2)).status, 404);
+  const pretty = pkg.key.toLowerCase().replace(/(.{4})(?=.)/g, "$1-");
+  const joined = await call(h, "POST", "/v1/packages/join", { key: pretty }, undefined, AUTH2);
+  assert.equal(joined.status, 200);
+  assert.equal(joined.json.members, 2);
+  assert.equal(joined.json.isOwner, false);
+  assert.equal((await call(h, "POST", "/v1/packages/join", { key: pkg.key }, undefined, AUTH2)).status, 409);
+
+  // İkinci üyenin eklediği site ilk üyede de görünür
+  await call(h, "POST", "/v1/sites", { packageId: pkg.id, url: "api.example.com", intervalMin: 15 }, undefined, AUTH2);
+  const st1 = (await call(h, "GET", "/v1/state")).json;
+  assert.equal(st1.packages.length, 1);
+  assert.equal(st1.packages[0].members, 2);
+  assert.deepEqual(st1.sites.map((x: any) => x.url).sort(), ["https://api.example.com/", "https://shop.example.com/"]);
+
+  // İkinci üye bu sitenin kesinti bildirimini kapatır; ilki açık bırakır
+  await call(h, "PATCH", `/v1/sites/${site.id}`, { notifyDown: false }, undefined, AUTH2);
+  const st2 = (await call(h, "GET", "/v1/state", undefined, undefined, AUTH2)).json;
+  assert.equal(st2.sites.find((x: any) => x.id === site.id).notifyDown, false);
+  assert.equal((await call(h, "GET", "/v1/state")).json.sites.find((x: any) => x.id === site.id).notifyDown, true);
+
+  // Ortak kontrol: iki site, iki üye → tek tur, site başına bir kontrol
+  h.siteStatus.set("shop.example.com", 503);
+  h.siteStatus.set("api.example.com", 503);
+  const before = h.db.count("runs");
+  const r = await tick(h, "2026-11-19T11:15:00Z");
+  assert.equal(r.due, 2);
+  assert.equal(h.db.count("runs") - before, 1);
+  // shop: yalnızca 1. üye; api: iki üye (ikincisi İngilizce)
+  const titles = h.pushes.map((p) => `${p.token.slice(0, 2)}:${p.body.aps.alert.title}`).sort();
+  assert.deepEqual(titles, ["aa:api.example.com erişilemiyor", "aa:shop.example.com erişilemiyor", "bb:api.example.com is down"]);
+
+  // Paket ayarları ortak: tekrar deneme sayısı
+  const patched = (await call(h, "PATCH", `/v1/packages/${pkg.id}`, { retries: 0, timeoutS: 99, name: "Web ekibi" }, undefined, AUTH2)).json;
+  assert.equal(patched.retries, 0);
+  assert.equal(patched.timeoutS, 30);
+  assert.equal(patched.name, "Web ekibi");
+
+  // Anahtarı yalnızca sahibi yeniler; eski anahtar geçersiz olur
+  assert.equal((await call(h, "POST", `/v1/packages/${pkg.id}/key`, {}, undefined, AUTH2)).status, 403);
+  const rotated = (await call(h, "POST", `/v1/packages/${pkg.id}/key`, {})).json;
+  assert.notEqual(rotated.key, pkg.key);
+
+  // Sahibi ayrılınca sahiplik diğer üyeye geçer; siteler kalır
+  assert.equal((await call(h, "POST", `/v1/packages/${pkg.id}/leave`, {})).status, 200);
+  const st3 = (await call(h, "GET", "/v1/state", undefined, undefined, AUTH2)).json;
+  assert.equal(st3.packages[0].isOwner, true);
+  assert.equal(st3.packages[0].members, 1);
+  assert.equal(st3.sites.length, 2);
+  assert.equal((await call(h, "GET", "/v1/state")).json.packages.length, 0);
+
+  // Uygulamasını silen son üye: paket ve siteler gider
+  assert.equal((await call(h, "DELETE", "/v1/device", undefined, undefined, AUTH2)).status, 200);
+  assert.equal(h.db.count("packages"), 0);
+  assert.equal(h.db.count("sites"), 0);
+});
+
+test("paket sınırları ve yönetici ekranı", async () => {
+  const h = await harness();
+  h.env.MAX_PACKAGES_PER_DEVICE = "2";
+  h.env.MAX_MEMBERS = "1";
+  await call(h, "POST", "/v1/register", { deviceId: DEV, secret: SECRET }, undefined, {});
+  await call(h, "POST", "/v1/register", { deviceId: DEV2, secret: SECRET }, undefined, {});
+  const a = (await call(h, "POST", "/v1/packages", { name: "A" })).json;
+  await call(h, "POST", "/v1/packages", {});
+  assert.equal((await call(h, "POST", "/v1/packages", { name: "C" })).status, 403);
+  assert.equal((await call(h, "POST", "/v1/packages/join", { key: a.key }, undefined, AUTH2)).status, 403, "üye sınırı");
+  await call(h, "POST", "/v1/sites", { packageId: a.id, url: "alpp.studio" });
+
+  assert.equal((await call(h, "GET", "/v1/admin")).status, 403);
+  h.env.ADMIN_DEVICE_IDS = `x, ${DEV}`;
+  assert.equal((await call(h, "GET", "/v1/state")).json.isAdmin, true);
+  const adm = (await call(h, "GET", "/v1/admin")).json;
+  assert.equal(adm.totals.packages, 2);
+  assert.equal(adm.totals.devices, 2);
+  assert.deepEqual(adm.packages.map((p: any) => p.name).sort(), ["A", "Sitelerim"]);
+  assert.equal(adm.packages.find((p: any) => p.name === "A").sites[0].url, "https://alpp.studio/");
+  assert.deepEqual(adm.log.map((l: any) => l.kind), ["created", "created"]);
+
+  assert.equal((await call(h, "DELETE", `/v1/packages/${a.id}`)).status, 200);
+  const adm2 = (await call(h, "GET", "/v1/admin")).json;
+  assert.equal(adm2.log[0].kind, "deleted");
+  assert.equal(adm2.log[0].text, "A");
+});
+
+test("geçiş 0003: mevcut siteler kişisel pakete taşınır, geçmiş ve tercihler korunur", async () => {
+  const db = new FakeD1({ before: "0003" });
+  db.db.exec(`
+    INSERT INTO devices (id, secret_hash, lang, retries, timeout_s, created_at, last_seen) VALUES ('d1', 'h', 'tr', 1, 20, 1, 1), ('d2', 'h', 'en', 2, 15, 2, 2), ('d3', 'h', 'tr', 2, 15, 3, 3);
+    INSERT INTO sites (id, device_id, url, name, interval_min, anchor_min, notify_down, notify_up, created_at) VALUES
+      ('s1', 'd1', 'https://a.com/', 'a', 15, 0, 1, 0, 1), ('s2', 'd1', 'https://b.com/', 'b', 5, 0, 1, 1, 1), ('s3', 'd2', 'https://c.com/', 'c', 60, 0, 1, 1, 1);
+    INSERT INTO runs (device_id, at_min, data) VALUES ('d1', 100, '{"s1":200,"s2":503}'), ('d2', 100, '{"s3":200}');
+  `);
+  db.migrate((f) => f >= "0003");
+  const pk = db.db.prepare("SELECT id, name, owner_id, retries, timeout_s, length(join_key) AS kl FROM packages ORDER BY id").all() as any[];
+  assert.deepEqual(pk.map((p) => [p.id, p.name, p.owner_id, p.retries, p.timeout_s, p.kl]), [
+    ["p-d1", "Sitelerim", "d1", 1, 20, 12], ["p-d2", "My sites", "d2", 2, 15, 12],
+  ], "sitesi olmayan d3 için paket yok");
+  assert.equal(db.count("members"), 2);
+  assert.deepEqual((db.db.prepare("SELECT package_id FROM sites ORDER BY id").all() as any[]).map((r) => r.package_id), ["p-d1", "p-d1", "p-d2"]);
+  assert.deepEqual(db.db.prepare("SELECT site_id, notify_down, notify_up FROM site_prefs").all().map((r: any) => ({ ...r })), [{ site_id: "s1", notify_down: 1, notify_up: 0 }]);
+  assert.deepEqual((db.db.prepare("SELECT package_id FROM runs ORDER BY package_id").all() as any[]).map((r) => r.package_id), ["p-d1", "p-d2"]);
+  assert.equal(db.count("admin_log"), 2);
+  // Cihaz silinince ortak paketteki siteleri artık otomatik silinmez (CASCADE kalktı)
+  db.db.exec("DELETE FROM devices WHERE id = 'd1'");
+  assert.equal(db.count("sites"), 3);
 });

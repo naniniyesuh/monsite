@@ -30,6 +30,16 @@ export interface Env {
   MAX_SITES_PER_DEVICE?: string;
   MAX_DEVICES?: string;
   MIN_APP_BUILD?: string;
+  /** Paket başına site sınırı (varsayılan 50) */
+  MAX_SITES_PER_PACKAGE?: string;
+  /** Kullanıcı başına paket sınırı (varsayılan 5) */
+  MAX_PACKAGES_PER_DEVICE?: string;
+  /** Paket başına üye sınırı (varsayılan 20) */
+  MAX_MEMBERS?: string;
+  /** Toplam paket sınırı (varsayılan 300) */
+  MAX_PACKAGES?: string;
+  /** Yönetici ekranını görebilecek cihaz kimlikleri (virgülle) */
+  ADMIN_DEVICE_IDS?: string;
 }
 
 export interface Ctx {
@@ -55,9 +65,21 @@ export interface DeviceRow {
   push_result?: string | null;
 }
 
+export interface PackageRow {
+  id: string;
+  name: string;
+  join_key: string;
+  owner_id: string | null;
+  retries: number;
+  timeout_s: number;
+  created_at: number;
+}
+
 export interface SiteRow {
   id: string;
+  /** Siteyi ekleyen cihaz */
   device_id: string;
+  package_id: string;
   url: string;
   name: string;
   interval_min: number;
@@ -72,10 +94,11 @@ export interface SiteRow {
   created_at: number;
 }
 
-/** Bir kontrol grubundaki tek site: site bilgisi + cihaz ayarları. */
+/** Bir kontrol grubundaki tek site: site + paketin yanlış alarm ayarları + üye sayısı. */
 export interface CheckJob {
   site: SiteRow;
-  device: DeviceRow;
+  pkg: PackageRow;
+  members: number;
 }
 
 export interface CheckResult {
