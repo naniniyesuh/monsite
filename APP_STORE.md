@@ -88,7 +88,7 @@ Değişenler: paketler (siteleri ekiple paylaşma), açılış animasyonu, yöne
 1. **Sunucu** 2.1'den önce yayına alınır (eski sürümlerle uyumlu; mevcut siteler "Sitelerim" paketine taşınır).
 2. **Gizlilik politikası** alpp.studio'da güncellenir (paylaşılan paketler, geliştiricinin paket ve adresleri görebilmesi).
 3. **Uygulama Gizliliği** (App Store Connect): "Diğer Kullanıcı İçeriği" için kullanım amaçlarına **Analitik**'i de ekleyin (bölüm 4). Kimliğe bağlı değil, takip yok — değişmez.
-4. **İnceleme için paket:** Telefonunuzda "App Review" adlı bir paket oluşturup içine 2–3 site ekleyin; anahtarını inceleme notundaki `XXXX-XXXX-XXXX` yerine yazın.
+4. **İnceleme için paket:** GitHub → Actions → **Review package** iş akışı sunucuda üyesiz bir "App Review" paketi (3 site) oluşturur; anahtarı `UPST-RVW7-K2QA` inceleme notunda yazılı. İnceleme ekibi paketi silerse iş akışını yeniden çalıştırın.
 5. Xcode → Archive → yükle → App Store Connect'te **2.1** sürümü → aşağıdaki "Yenilikler", güncel açıklama (bölüm 2), inceleme notu (bölüm 5) → derleme 2.1 (5) → **İncelemeye Gönder**.
 6. 2.1 yayınlanınca sunucuda `MIN_APP_BUILD = "5"` yapılır; 2.0.1 kullanıcıları güncellemeye yönlendirilir.
 
@@ -335,7 +335,7 @@ How to test:
 3. Open the site to see its status, the last 7 days of checks, and notification toggles. "Check now" runs a check on demand. Tapping the address opens the site in Safari; tapping the interval changes it.
 4. Settings → "Send test notification" sends a push through the backend.
 5. The "Certificates" tab shows SSL certificate expiry dates. These are checked directly from the device once a day when the app opens; tap refresh to recheck.
-6. Packages (sharing sites with a team): Settings → "Join a package" and enter XXXX-XXXX-XXXX to join our sample package with a few sites. Settings → "Create a package" creates your own package with a key you can share.
+6. Packages (sharing sites with a team): Settings → "Join a package" and enter UPST-RVW7-K2QA to join our sample package with three sites (one of them, "Test: always down", is intentionally failing). Settings → "Create a package" creates your own package with a key you can share.
 
 Settings shows an "Admin" item only on the developer's own device (configured on the server) to monitor service capacity: package count, sites and new-package notices. It isn't available to other users.
 

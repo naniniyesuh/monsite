@@ -1,0 +1,35 @@
+name: Review package
+
+# App Review ekibinin "Pakete katıl" özelliğini deneyebilmesi için birkaç site içeren
+# üyesiz örnek paket. Tekrar çalıştırmak güvenli (varsa dokunmaz).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Örnek paketi oluştur
+        run: |
+          cat > review.sql <<'SQL'
+          INSERT OR IGNORE INTO packages (id, name, join_key, owner_id, retries, timeout_s, created_at)
+            VALUES ('app-review', 'App Review', 'UPSTRVW7K2QA', NULL, 2, 15, CAST(strftime('%s','now') AS INTEGER) * 1000);
+          INSERT OR IGNORE INTO sites (id, device_id, package_id, url, name, interval_min, anchor_min, paused, status, created_at) VALUES
+            ('app-review-1', 'app-review', 'app-review', 'https://example.com/', 'example.com', 15, CAST(strftime('%s','now') AS INTEGER) / 60 + 1, 0, 'unknown', CAST(strftime('%s','now') AS INTEGER) * 1000),
+            ('app-review-2', 'app-review', 'app-review', 'https://alpp.studio/', 'alpp.studio', 15, CAST(strftime('%s','now') AS INTEGER) / 60 + 1, 0, 'unknown', CAST(strftime('%s','now') AS INTEGER) * 1000),
+            ('app-review-3', 'app-review', 'app-review', 'https://httpbin.org/status/503', 'Test: always down', 5, CAST(strftime('%s','now') AS INTEGER) / 60 + 1, 0, 'unknown', CAST(strftime('%s','now') AS INTEGER) * 1000);
+          SQL
+          npx wrangler d1 execute upsite --remote --file review.sql
+          npx wrangler d1 execute upsite --remote --command "SELECT p.name, p.join_key, COUNT(s.id) AS sites FROM packages p LEFT JOIN sites s ON s.package_id = p.id WHERE p.id = 'app-review' GROUP BY p.id"
