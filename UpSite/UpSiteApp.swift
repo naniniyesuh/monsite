@@ -87,7 +87,7 @@ struct UpSiteApp: App {
                 await store.refreshNotificationStatus()
                 await store.refresh()
                 await store.syncDevice()
-                await certs.checkAll(store.sites)
+                await certs.checkIfDue(store.sites)
             }
         }
     }
@@ -96,12 +96,42 @@ struct UpSiteApp: App {
 struct RootView: View {
     @EnvironmentObject private var router: RootRouter
     @EnvironmentObject private var store: SiteStore
+    @EnvironmentObject private var certs: CertStore
+    @State private var splash = true
 
     var body: some View {
-        // TabView her zaman yerinde kalır; güncelleme ekranı üstüne kapanır.
-        tabs.overlay {
-            if store.updateRequired { UpdateRequiredView() }
+        // TabView her zaman yerinde kalır; güncelleme ekranı ve açılış animasyonu üstüne kapanır.
+        tabs
+            .overlay {
+                if store.updateRequired { UpdateRequiredView() }
+            }
+            .overlay {
+                if splash { SplashView().transition(.opacity) }
+            }
+            .task { await launch() }
+    }
+
+    /// Açılış: en az 1,3 sn animasyon; bu sırada siteler ve sertifikalar hazırlanır (en fazla 3 sn beklenir).
+    private func launch() async {
+        guard splash else { return }
+        let started = Date()
+        let work = Task { @MainActor in
+            await store.refresh()
+            await certs.checkIfDue(store.sites)
         }
+        try? await Task.sleep(nanoseconds: 1_300_000_000)
+        _ = await withTaskGroup(of: Bool.self) { group in
+            group.addTask { await work.value; return true }
+            group.addTask {
+                let left = max(0, 3 - Date().timeIntervalSince(started))
+                try? await Task.sleep(nanoseconds: UInt64(left * 1_000_000_000))
+                return false
+            }
+            let first = await group.next()
+            group.cancelAll()
+            return first ?? false
+        }
+        withAnimation(.easeOut(duration: 0.35)) { splash = false }
     }
 
     private var tabs: some View {

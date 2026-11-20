@@ -67,6 +67,11 @@ enum APIError: LocalizedError {
             case "capacity": return L.s("error.capacity")
             case "no-token": return L.s("error.noToken")
             case "push-not-configured": return L.s("error.pushNotConfigured")
+            case "invalid-key": return L.s("error.invalidKey")
+            case "already-member": return L.s("error.alreadyMember")
+            case "package-limit": return L.s("error.packageLimit")
+            case "member-limit": return L.s("error.memberLimit")
+            case "not-owner": return L.s("error.notOwner")
             default: return L.s("error.server", status)
             }
         }
@@ -174,9 +179,10 @@ final class APIClient: @unchecked Sendable {
 
     func updateDevice(_ fields: [String: Any]) async throws { let _: OK = try await send("PUT", "/v1/device", body: fields) }
 
-    func addSite(url: String, name: String?, interval: Int, notifyDown: Bool, notifyUp: Bool) async throws -> Site {
+    func addSite(url: String, name: String?, interval: Int, notifyDown: Bool, notifyUp: Bool, packageId: String?) async throws -> Site {
         var b: [String: Any] = ["url": url, "intervalMin": interval, "notifyDown": notifyDown, "notifyUp": notifyUp]
         if let name, !name.isEmpty { b["name"] = name }
+        if let packageId { b["packageId"] = packageId }
         return try await send("POST", "/v1/sites", body: b)
     }
 
@@ -193,6 +199,24 @@ final class APIClient: @unchecked Sendable {
     func deleteDevice() async throws { let _: OK = try await send("DELETE", "/v1/device") }
 
     func testPush() async throws -> PushResult { try await send("POST", "/v1/push/test") }
+
+    // Paketler
+
+    func createPackage(name: String) async throws -> SitePackage { try await send("POST", "/v1/packages", body: ["name": name]) }
+
+    func joinPackage(key: String) async throws -> SitePackage { try await send("POST", "/v1/packages/join", body: ["key": key]) }
+
+    func updatePackage(_ id: String, _ fields: [String: Any]) async throws -> SitePackage { try await send("PATCH", "/v1/packages/\(id)", body: fields) }
+
+    func rotateKey(_ id: String) async throws -> SitePackage { try await send("POST", "/v1/packages/\(id)/key", body: [:]) }
+
+    func leavePackage(_ id: String) async throws { let _: OK = try await send("POST", "/v1/packages/\(id)/leave", body: [:]) }
+
+    func deletePackage(_ id: String) async throws { let _: OK = try await send("DELETE", "/v1/packages/\(id)") }
+
+    func admin() async throws -> AdminState { try await send("GET", "/v1/admin") }
+
+    var deviceId: String { creds().id }
 }
 
 enum AppInfo {

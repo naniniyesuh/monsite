@@ -23,6 +23,8 @@
 		BB000000000000000000011E /* UpSiteApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000000000000000000011D /* UpSiteApp.swift */; };
 		BB0000000000000000000120 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB000000000000000000011F /* Assets.xcassets */; };
 		BB0000000000000000000122 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000121 /* PrivacyInfo.xcprivacy */; };
+		BB0000000000000000000126 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000125 /* SplashView.swift */; };
+		BB0000000000000000000128 /* PackageViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000000000000000000127 /* PackageViews.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +48,8 @@
 		BB0000000000000000000121 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		BB0000000000000000000123 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BB0000000000000000000124 /* UpSite.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = UpSite.entitlements; sourceTree = "<group>"; };
+		BB0000000000000000000125 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
+		BB0000000000000000000127 /* PackageViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackageViews.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -85,6 +89,8 @@
 				BB0000000000000000000119 /* SitesView.swift */,
 				BB000000000000000000011B /* Theme.swift */,
 				BB000000000000000000011D /* UpSiteApp.swift */,
+				BB0000000000000000000125 /* SplashView.swift */,
+				BB0000000000000000000127 /* PackageViews.swift */,
 				BB000000000000000000011F /* Assets.xcassets */,
 				BB0000000000000000000121 /* PrivacyInfo.xcprivacy */,
 				BB0000000000000000000123 /* Info.plist */,
@@ -172,6 +178,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BB0000000000000000000128 /* PackageViews.swift in Sources */,
+				BB0000000000000000000126 /* SplashView.swift in Sources */,
 				BB0000000000000000000102 /* APIClient.swift in Sources */,
 				BB0000000000000000000104 /* AddSiteView.swift in Sources */,
 				BB0000000000000000000106 /* CertStore.swift in Sources */,
@@ -247,7 +255,7 @@
 				CODE_SIGN_ENTITLEMENTS = UpSite/UpSite.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 5CB9V6B37M;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = UpSite/Info.plist;
@@ -259,7 +267,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
 				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
-				MARKETING_VERSION = 2.0.1;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = studio.alpp.monsite;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -276,7 +284,7 @@
 				CODE_SIGN_ENTITLEMENTS = UpSite/UpSite.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 5CB9V6B37M;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = UpSite/Info.plist;
@@ -288,7 +296,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
 				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
-				MARKETING_VERSION = 2.0.1;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = studio.alpp.monsite;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;

@@ -9,8 +9,6 @@ final class Prefs: ObservableObject {
 
     @Published var appearance: Appearance { didSet { d.set(appearance.rawValue, forKey: "appearance") } }
     @Published var language: AppLanguage { didSet { d.set(language.rawValue, forKey: "language"); onServerSettingsChange?() } }
-    @Published var retries: Int { didSet { d.set(retries, forKey: "retries"); onServerSettingsChange?() } }
-    @Published var timeoutS: Int { didSet { d.set(timeoutS, forKey: "timeoutS"); onServerSettingsChange?() } }
     @Published var quietEnabled: Bool { didSet { d.set(quietEnabled, forKey: "quietEnabled"); onServerSettingsChange?() } }
     @Published var quietStart: String { didSet { d.set(quietStart, forKey: "quietStart"); onServerSettingsChange?() } }
     @Published var quietEnd: String { didSet { d.set(quietEnd, forKey: "quietEnd"); onServerSettingsChange?() } }
@@ -24,8 +22,6 @@ final class Prefs: ObservableObject {
     private init() {
         appearance = Appearance(rawValue: d.string(forKey: "appearance") ?? "") ?? .dark
         language = AppLanguage(rawValue: d.string(forKey: "language") ?? "") ?? .system
-        retries = d.object(forKey: "retries") as? Int ?? 2
-        timeoutS = d.object(forKey: "timeoutS") as? Int ?? 15
         quietEnabled = d.bool(forKey: "quietEnabled")
         quietStart = d.string(forKey: "quietStart") ?? "23:00"
         quietEnd = d.string(forKey: "quietEnd") ?? "07:00"
@@ -46,8 +42,6 @@ final class Prefs: ObservableObject {
         [
             "lang": L.current.rawValue,
             "tz": TimeZone.current.identifier,
-            "retries": retries,
-            "timeoutS": timeoutS,
             "quietStart": quietEnabled ? quietStart : NSNull(),
             "quietEnd": quietEnabled ? quietEnd : NSNull(),
         ]
@@ -55,7 +49,7 @@ final class Prefs: ObservableObject {
 
     func resetAll() {
         for k in ["appearance", "language", "retries", "timeoutS", "quietEnabled", "quietStart", "quietEnd",
-                  "certThresholdDays", "certExcluded", "certRecords"] {
+                  "certThresholdDays", "certExcluded", "certRecords", "certAutoCheckAt"] {
             d.removeObject(forKey: k)
         }
     }

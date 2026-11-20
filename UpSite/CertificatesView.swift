@@ -130,12 +130,12 @@ private struct CertRow: View {
 
     private var line2: String {
         if record.checkedAt == .distantPast { return "" }
-        var s = L.s("certs.checked", SiteText.relative(record.checkedAt))
+        var parts: [String] = []
+        if !record.trusted && record.notAfter != nil { parts.append(L.s("certs.untrusted")) }
         if record.recentlyChanged, let prev = record.previousNotAfter {
-            s = L.s("certs.newCert", prev.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted, locale: L.locale))) + " · " + s
+            parts.append(L.s("certs.newCert", prev.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted, locale: L.locale))))
         }
-        if !record.trusted && record.notAfter != nil { s = L.s("certs.untrusted") + " · " + s }
-        return s
+        return parts.joined(separator: " · ")
     }
 }
 

@@ -7,6 +7,8 @@ enum SiteStatus: String, Codable {
 /// Sunucudan gelen site durumu.
 struct Site: Identifiable, Codable, Hashable {
     var id: String
+    /// Sitenin ait olduğu paket (2.1 sunucusu her zaman gönderir)
+    var packageId: String?
     var url: String
     var name: String
     var intervalMin: Int
@@ -59,7 +61,58 @@ struct SiteState: Codable {
     var lastCronAt: Double?
     var lastPush: PushInfo?
     var minBuild: Int?
+    var isAdmin: Bool?
+    var packages: [SitePackage]?
     var sites: [Site]
+}
+
+/// Ortak site paketi: üyeler aynı siteleri görür, her site bir kez kontrol edilir.
+struct SitePackage: Identifiable, Codable, Hashable {
+    var id: String
+    var name: String
+    var key: String
+    var isOwner: Bool
+    var members: Int
+    var retries: Int
+    var timeoutS: Int
+    var createdAt: Double
+
+    /// XXXX-XXXX-XXXX
+    var prettyKey: String { SitePackage.pretty(key) }
+
+    static func pretty(_ raw: String) -> String {
+        let k = raw.uppercased().filter { $0.isLetter || $0.isNumber }
+        return stride(from: 0, to: k.count, by: 4).map { i -> String in
+            let a = k.index(k.startIndex, offsetBy: i)
+            let b = k.index(a, offsetBy: min(4, k.count - i))
+            return String(k[a..<b])
+        }.joined(separator: "-")
+    }
+}
+
+/// Yönetici ekranı verisi
+struct AdminState: Codable {
+    struct Totals: Codable { var packages: Int; var sites: Int; var devices: Int }
+    struct Limits: Codable { var sitesPerPackage: Int; var packagesPerDevice: Int; var members: Int; var packages: Int }
+    struct PackageInfo: Codable, Identifiable {
+        struct SiteInfo: Codable, Hashable { var url: String; var intervalMin: Int; var paused: Bool; var status: String }
+        var id: String
+        var name: String
+        var createdAt: Double
+        var members: Int
+        var sites: [SiteInfo]
+    }
+    struct LogEntry: Codable, Hashable {
+        var at: Double
+        var kind: String
+        var packageId: String?
+        var text: String
+        var date: Date { Date(timeIntervalSince1970: at / 1000) }
+    }
+    var totals: Totals
+    var limits: Limits
+    var packages: [PackageInfo]
+    var log: [LogEntry]
 }
 
 struct SiteHistory: Codable {
@@ -117,21 +170,6 @@ enum CheckInterval {
         }
         return out
     }
-}
-
-/// Dışa / içe aktarma dosyası
-struct SiteListFile: Codable {
-    struct Entry: Codable {
-        var url: String
-        var name: String?
-        var intervalMin: Int?
-        var notifyDown: Bool?
-        var notifyUp: Bool?
-    }
-    var app = "UpSite"
-    var version = 1
-    var exportedAt: Date = Date()
-    var sites: [Entry]
 }
 
 /// Telefonda yapılan sertifika kontrolünün sonucu.

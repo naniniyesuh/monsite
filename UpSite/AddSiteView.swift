@@ -1,7 +1,10 @@
 import SwiftUI
 
 struct AddSiteView: View {
+    /// Açılırken seçili paket (nil: ilk paket)
+    var packageId: String? = nil
     @EnvironmentObject private var store: SiteStore
+    @State private var selectedPackage: String?
     @Environment(\.dismiss) private var dismiss
     @State private var url = ""
     @State private var name = ""
@@ -44,9 +47,23 @@ struct AddSiteView: View {
 
                 Section {
                     IntervalPicker(selection: $interval).themedRow()
-                    AlignmentHint(interval: interval).themedRow()
                 } header: {
                     SectionLabel(text: L.s("add.interval"))
+                }
+
+                if store.packages.count > 1 {
+                    Section {
+                        Picker(L.s("add.package"), selection: $selectedPackage) {
+                            ForEach(store.packages) { p in
+                                Text(p.members > 1 ? "\(p.name) · \(L.s("package.membersShort", p.members))" : p.name).tag(Optional(p.id))
+                            }
+                        }
+                        .themedRow()
+                    } header: {
+                        SectionLabel(text: L.s("add.package"))
+                    } footer: {
+                        if (store.package(selectedPackage)?.members ?? 1) > 1 { Text(L.s("add.packageShared")) }
+                    }
                 }
 
                 Section {
@@ -80,6 +97,7 @@ struct AddSiteView: View {
                 }
             }
             .onAppear {
+                selectedPackage = packageId ?? store.packages.first?.id
                 // Ekran görüntüleri için: -UpSiteAddInterval 3
                 let args = ProcessInfo.processInfo.arguments
                 if let i = args.firstIndex(of: "-UpSiteAddInterval"), i + 1 < args.count, let m = Int(args[i + 1]) {
@@ -98,7 +116,8 @@ struct AddSiteView: View {
         Task {
             do {
                 _ = try await store.add(url: url, name: name, interval: interval,
-                                        notifyDown: notifyDown, notifyUp: notifyUp, trackCert: trackCert)
+                                        notifyDown: notifyDown, notifyUp: notifyUp, trackCert: trackCert,
+                                        packageId: selectedPackage ?? store.packages.first?.id)
                 dismiss()
             } catch {
                 self.error = error.localizedDescription
@@ -124,7 +143,6 @@ struct EditSiteView: View {
                 } header: { SectionLabel(text: L.s("add.site")) }
                 Section {
                     IntervalPicker(selection: $interval).themedRow()
-                    AlignmentHint(interval: interval).themedRow()
                 } header: { SectionLabel(text: L.s("add.interval")) }
             }
             .themedList()
@@ -171,27 +189,5 @@ struct IntervalPicker: View {
             }
         }
         .padding(.vertical, 6)
-    }
-}
-
-/// "Saat başına hizalı" açıklaması ve örnek saatler.
-struct AlignmentHint: View {
-    let interval: Int
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "clock").foregroundStyle(Theme.text3)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L.s("add.aligned")).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text)
-                Text(L.s("add.alignedExample", examples)).font(.footnote).foregroundStyle(Theme.text2)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-
-    private var examples: String {
-        CheckInterval.upcoming(interval, count: 4)
-            .map { $0.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: L.locale)) }
-            .joined(separator: ", ") + "…"
     }
 }

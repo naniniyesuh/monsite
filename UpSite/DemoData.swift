@@ -19,29 +19,34 @@ enum DemoData {
     }
 
     private static func site(_ id: String, _ url: String, _ name: String, _ interval: Int, status: String, sinceH: Double,
-                             recent r: [[Double]], paused: Bool = false, code: Int = 200) -> Site {
-        Site(id: id, url: url, name: name, intervalMin: interval, notifyDown: true, notifyUp: true, paused: paused,
+                             recent r: [[Double]], paused: Bool = false, code: Int = 200, pkg: String = "p1") -> Site {
+        Site(id: id, packageId: pkg, url: url, name: name, intervalMin: interval, notifyDown: true, notifyUp: true, paused: paused,
              status: status, statusSince: ms(Date().addingTimeInterval(-sinceH * 3600)), lastCode: code, lastError: nil,
              lastCheckAt: paused ? nil : ms(lastTick), nextCheckAt: paused ? nil : ms(lastTick.addingTimeInterval(Double(interval * 60))),
              recent: paused ? [] : r, createdAt: ms(Date().addingTimeInterval(-20 * 86_400)))
     }
 
-    static func state() -> ([Site], Date?) {
+    static func state() -> ([SitePackage], [Site], Date?) {
+        let created = Date().addingTimeInterval(-30 * 86_400).timeIntervalSince1970 * 1000
+        let packages = [
+            SitePackage(id: "p1", name: L.current == .tr ? "Sitelerim" : "My sites", key: "7K2PQ9XAMH4D", isOwner: true, members: 1, retries: 2, timeoutS: 15, createdAt: created),
+            SitePackage(id: "p2", name: L.current == .tr ? "Web ekibi" : "Web team", key: "R8VN3CWE6TJB", isOwner: false, members: 5, retries: 2, timeoutS: 15, createdAt: created),
+        ]
         let sites = [
-            site("d1", "https://shop.example.com/", "shop.example.com", 2, status: "down", sinceH: 0.25, recent: recent(2, downAt: [0, 1], code: 503), code: 503),
+            site("d1", "https://shop.example.com/", "shop.example.com", 2, status: "down", sinceH: 0.25, recent: recent(2, downAt: [0, 1], code: 503), code: 503, pkg: "p2"),
             site("d2", "https://alpp.studio/", "alpp.studio", 15, status: "up", sinceH: 74, recent: recent(15)),
             site("d3", "https://alpp.studio/upsite/", "alpp.studio/upsite", 60, status: "up", sinceH: 290, recent: recent(60)),
-            site("d4", "https://api.example.com/", "api.example.com", 5, status: "up", sinceH: 20, recent: recent(5, downAt: [9, 10])),
-            site("d5", "https://example.com/", "example.com", 30, status: "up", sinceH: 220, recent: recent(30)),
-            site("d6", "https://docs.example.org/", "docs.example.org", 3, status: "up", sinceH: 400, recent: [], paused: true),
+            site("d4", "https://api.example.com/", "api.example.com", 5, status: "up", sinceH: 20, recent: recent(5, downAt: [9, 10]), pkg: "p2"),
+            site("d5", "https://example.com/", "example.com", 30, status: "up", sinceH: 220, recent: recent(30), pkg: "p2"),
+            site("d6", "https://docs.example.org/", "docs.example.org", 3, status: "up", sinceH: 400, recent: [], paused: true, pkg: "p2"),
         ]
-        return (sites, lastTick)
+        return (packages, sites, lastTick)
     }
 
-    static func newSite(url: String, name: String, interval: Int) -> Site {
+    static func newSite(url: String, name: String, interval: Int, packageId: String?) -> Site {
         let u = url.hasPrefix("http") ? url : "https://\(url)/"
         let host = URL(string: u)?.host ?? url
-        return site(UUID().uuidString, u, name.isEmpty ? host : name, interval, status: "unknown", sinceH: 0, recent: [])
+        return site(UUID().uuidString, u, name.isEmpty ? host : name, interval, status: "unknown", sinceH: 0, recent: [], pkg: packageId ?? "p1")
     }
 
     static func history(for s: Site) -> SiteHistory {

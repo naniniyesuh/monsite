@@ -8,6 +8,8 @@ struct SiteDetailView: View {
     @State private var checking = false
     @State private var editing = false
     @State private var confirmDelete = false
+    @State private var pickingInterval = false
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         if let site = store.site(siteId) {
@@ -20,10 +22,26 @@ struct SiteDetailView: View {
     private func content(_ site: Site) -> some View {
         List {
             Section {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(site.name).font(.title.weight(.heavy)).foregroundStyle(Theme.text)
-                    Text(site.url).font(.subheadline).foregroundStyle(Theme.text3).textSelection(.enabled)
+                // Adrese dokununca site tarayıcıda açılır (kesintiyi gözle görmek için).
+                Button {
+                    if let u = URL(string: site.url) { openURL(u) }
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(site.name).font(.title.weight(.heavy)).foregroundStyle(Theme.text).multilineTextAlignment(.leading)
+                        HStack(spacing: 4) {
+                            Text(site.url).lineLimit(1).truncationMode(.middle)
+                            Image(systemName: "arrow.up.right.square").font(.footnote.weight(.semibold))
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.accent)
+                        if store.packages.count > 1, let pkg = store.package(site.packageId) {
+                            Label(pkg.name, systemImage: "square.stack.3d.up").font(.footnote).foregroundStyle(Theme.text3)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .buttonStyle(.plain)
+                .accessibilityHint(L.s("detail.openHint"))
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 8, trailing: 4))
 
@@ -32,7 +50,11 @@ struct SiteDetailView: View {
                     .listRowBackground(Color.clear)
 
                 HStack(spacing: 8) {
-                    fact(CheckInterval.label(site.intervalMin), L.s("detail.interval"))
+                    Button { pickingInterval = true } label: {
+                        fact(CheckInterval.label(site.intervalMin), L.s("detail.interval"), editable: true)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(L.s("detail.intervalHint"))
                     fact(site.lastCheck.map { $0.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: L.locale)) } ?? "—", L.s("detail.last"))
                     fact(site.nextCheck.map { $0.formatted(Date.FormatStyle(date: .omitted, time: .shortened, locale: L.locale)) } ?? "—", L.s("detail.next"))
                 }
@@ -135,6 +157,7 @@ struct SiteDetailView: View {
             }
         }
         .sheet(isPresented: $editing) { EditSiteView(site: site) }
+        .sheet(isPresented: $pickingInterval) { IntervalSheet(site: site) }
         .confirmationDialog(L.s("detail.deleteConfirm", site.name), isPresented: $confirmDelete, titleVisibility: .visible) {
             Button(L.s("action.delete"), role: .destructive) {
                 Task { await store.delete(site); dismiss() }
@@ -148,9 +171,12 @@ struct SiteDetailView: View {
         }
     }
 
-    private func fact(_ value: String, _ label: String) -> some View {
+    private func fact(_ value: String, _ label: String, editable: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(value).font(.headline).foregroundStyle(Theme.text).lineLimit(1).minimumScaleFactor(0.7)
+            HStack(spacing: 4) {
+                Text(value).font(.headline).foregroundStyle(Theme.text).lineLimit(1).minimumScaleFactor(0.7)
+                if editable { Image(systemName: "chevron.up.chevron.down").font(.caption2.weight(.bold)).foregroundStyle(Theme.accent) }
+            }
             Text(label).font(.caption).foregroundStyle(Theme.text3)
         }
         .padding(12)
@@ -217,5 +243,42 @@ private struct StatusHero: View {
         case .down: return Theme.downBorder
         default: return Theme.divider
         }
+    }
+}
+
+/// Site ayrıntısında "Sıklık" kutusuna dokununca açılan kısa seçim.
+struct IntervalSheet: View {
+    let site: Site
+    @EnvironmentObject private var store: SiteStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var interval = CheckInterval.defaultValue
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    IntervalPicker(selection: $interval).themedRow()
+                } footer: {
+                    if store.package(site.packageId)?.members ?? 1 > 1 { Text(L.s("detail.intervalShared")) }
+                }
+            }
+            .themedList()
+            .navigationTitle(L.s("add.interval"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button(L.s("action.cancel")) { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L.s("action.save")) {
+                        Task {
+                            if interval != site.intervalMin { await store.update(site, interval: interval) }
+                            dismiss()
+                        }
+                    }
+                    .fontWeight(.bold)
+                }
+            }
+            .onAppear { interval = CheckInterval.clamp(site.intervalMin) }
+        }
+        .presentationDetents([.medium])
     }
 }

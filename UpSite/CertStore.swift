@@ -43,8 +43,36 @@ final class CertStore: ObservableObject {
             .map(\.host).filter { seen.insert($0).inserted }
     }
 
+    private var runningAll: Task<Void, Never>?
+    private let autoKey = "certAutoCheckAt"
+
+    /// Uygulama açılışında: günde bir kez tümünü kontrol eder; o gün zaten kontrol edildiyse
+    /// yalnızca henüz hiç kontrol edilmemiş (yeni eklenen) alan adlarına bakar.
+    func checkIfDue(_ sites: [Site]) async {
+        if demo { return }
+        if let running = runningAll { await running.value; return }
+        let last = UserDefaults.standard.object(forKey: autoKey) as? Date
+        if let last, Calendar.current.isDateInToday(last) {
+            let missing = trackedHosts(sites).filter { records[$0] == nil }
+            for h in missing { await check(h) }
+            if !missing.isEmpty { scheduleReminders() }
+            return
+        }
+        await checkAll(sites)
+        UserDefaults.standard.set(Date(), forKey: autoKey)
+    }
+
+    /// Tümünü kontrol eder (elle yenileme ya da günün ilk açılışı).
     func checkAll(_ sites: [Site]) async {
         if demo { return }
+        if let running = runningAll { await running.value; return }
+        let task = Task { await self.runAll(sites) }
+        runningAll = task
+        await task.value
+        runningAll = nil
+    }
+
+    private func runAll(_ sites: [Site]) async {
         let hosts = trackedHosts(sites)
         await withTaskGroup(of: Void.self) { group in
             var it = hosts.makeIterator()

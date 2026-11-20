@@ -9,6 +9,8 @@ final class SiteStore: ObservableObject {
     static let shared = SiteStore()
 
     @Published private(set) var sites: [Site] = []
+    @Published private(set) var packages: [SitePackage] = []
+    @Published private(set) var isAdmin = false
     @Published private(set) var lastCronAt: Date?
     /// Sunucunun bu cihaza son bildirim denemesi (zaman, "sent" ya da hata).
     @Published private(set) var lastPush: SiteState.PushInfo?
@@ -31,7 +33,7 @@ final class SiteStore: ObservableObject {
 
     private init() {
         if demo {
-            (sites, lastCronAt) = DemoData.state()
+            (packages, sites, lastCronAt) = DemoData.state()
             loadedOnce = true
             let args = ProcessInfo.processInfo.arguments
             if let i = args.firstIndex(of: "-UpSiteOpenSite"), i + 1 < args.count { openSiteId = args[i + 1] }
@@ -41,7 +43,9 @@ final class SiteStore: ObservableObject {
 
     var downSites: [Site] { sites.filter { $0.displayStatus == .down } }
     var upCount: Int { sites.filter { $0.displayStatus == .up }.count }
-    var nextCheck: Date? { sites.compactMap(\.nextCheck).filter { $0 > Date().addingTimeInterval(-60) }.min() }
+
+    func sites(in pkg: SitePackage) -> [Site] { sites.filter { $0.packageId == pkg.id } }
+    func package(_ id: String?) -> SitePackage? { packages.first { $0.id == id } }
 
     /// Sunucu kontrolleri gecikiyor mu (son tur 5 dakikadan eski)?
     var serverLate: Bool {
@@ -61,6 +65,8 @@ final class SiteStore: ObservableObject {
         do {
             let s = try await api.state()
             sites = s.sites
+            packages = s.packages ?? []
+            isAdmin = s.isAdmin ?? false
             lastCronAt = s.lastCronAt.map { Date(timeIntervalSince1970: $0 / 1000) }
             lastPush = s.lastPush
             if let m = s.minBuild, m != minBuild {
@@ -76,14 +82,16 @@ final class SiteStore: ObservableObject {
 
     // MARK: Site işlemleri
 
-    func add(url: String, name: String, interval: Int, notifyDown: Bool, notifyUp: Bool, trackCert: Bool) async throws -> Site {
+    func add(url: String, name: String, interval: Int, notifyDown: Bool, notifyUp: Bool, trackCert: Bool, packageId: String?) async throws -> Site {
         let site: Site
         if demo {
-            site = DemoData.newSite(url: url, name: name, interval: interval)
+            site = DemoData.newSite(url: url, name: name, interval: interval, packageId: packageId ?? packages.first?.id)
         } else {
-            site = try await api.addSite(url: url, name: name, interval: interval, notifyDown: notifyDown, notifyUp: notifyUp)
+            site = try await api.addSite(url: url, name: name, interval: interval, notifyDown: notifyDown, notifyUp: notifyUp, packageId: packageId)
         }
         sites.append(site)
+        // İlk sitede sunucu kişisel paketi kendisi oluşturur; paket listesini tazele.
+        if !demo && (site.packageId == nil || package(site.packageId) == nil) { await refresh() }
         if !trackCert { Prefs.shared.certExcluded.insert(site.id) }
         await requestNotificationPermissionIfNeeded()
         if !demo {
@@ -144,42 +152,67 @@ final class SiteStore: ObservableObject {
         return try? await api.history(site.id)
     }
 
-    // MARK: Veri
+    // MARK: Paketler
 
-    func exportFile() -> URL? {
-        let file = SiteListFile(sites: sites.map { .init(url: $0.url, name: $0.name, intervalMin: $0.intervalMin, notifyDown: $0.notifyDown, notifyUp: $0.notifyUp) })
-        let enc = JSONEncoder()
-        enc.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        enc.dateEncodingStrategy = .iso8601
-        guard let data = try? enc.encode(file) else { return nil }
-        let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("UpSite-siteler-\(df.string(from: Date())).json")
-        try? data.write(to: url, options: .atomic)
-        return url
-    }
-
-    /// İçe aktarır; (eklenen, atlanan) sayısını döndürür.
-    func importFile(_ url: URL) async -> (added: Int, skipped: Int) {
-        let access = url.startAccessingSecurityScopedResource()
-        defer { if access { url.stopAccessingSecurityScopedResource() } }
-        guard let data = try? Data(contentsOf: url) else { return (0, 0) }
-        let dec = JSONDecoder(); dec.dateDecodingStrategy = .iso8601
-        guard let file = try? dec.decode(SiteListFile.self, from: data) else { return (0, 0) }
-        var added = 0, skipped = 0
-        let existing = Set(sites.map { $0.url.lowercased() })
-        for e in file.sites {
-            if existing.contains(e.url.lowercased()) { skipped += 1; continue }
-            do {
-                _ = try await add(url: e.url, name: e.name ?? "", interval: CheckInterval.clamp(e.intervalMin ?? CheckInterval.defaultValue),
-                                  notifyDown: e.notifyDown ?? true, notifyUp: e.notifyUp ?? true, trackCert: true)
-                added += 1
-            } catch {
-                skipped += 1
-            }
+    func createPackage(name: String) async throws -> SitePackage {
+        if demo {
+            let p = SitePackage(id: UUID().uuidString, name: name, key: "DEMO7K2PQ9XA", isOwner: true, members: 1, retries: 2, timeoutS: 15, createdAt: Date().timeIntervalSince1970 * 1000)
+            packages.append(p)
+            return p
         }
-        await refresh()
-        return (added, skipped)
+        let p = try await api.createPackage(name: name)
+        packages.append(p)
+        return p
     }
+
+    func joinPackage(key: String) async throws -> SitePackage {
+        if demo { throw APIError.server(404, "invalid-key") }
+        let p = try await api.joinPackage(key: key)
+        await refresh()
+        return p
+    }
+
+    func updatePackage(_ pkg: SitePackage, name: String? = nil, retries: Int? = nil, timeoutS: Int? = nil) async {
+        var f: [String: Any] = [:]
+        if let name { f["name"] = name }
+        if let retries { f["retries"] = retries }
+        if let timeoutS { f["timeoutS"] = timeoutS }
+        guard let i = packages.firstIndex(where: { $0.id == pkg.id }) else { return }
+        if demo {
+            if let name { packages[i].name = name }
+            if let retries { packages[i].retries = retries }
+            if let timeoutS { packages[i].timeoutS = timeoutS }
+            return
+        }
+        do {
+            let p = try await api.updatePackage(pkg.id, f)
+            if let j = packages.firstIndex(where: { $0.id == p.id }) { packages[j] = p }
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func rotateKey(_ pkg: SitePackage) async throws {
+        let p = try await api.rotateKey(pkg.id)
+        if let i = packages.firstIndex(where: { $0.id == p.id }) { packages[i] = p }
+    }
+
+    /// Paketten ayrılır; sahibi "sil" derse paket herkes için silinir.
+    func leave(_ pkg: SitePackage, delete: Bool) async throws {
+        if !demo {
+            if delete { try await api.deletePackage(pkg.id) } else { try await api.leavePackage(pkg.id) }
+        }
+        let gone = Set(sites(in: pkg).map(\.id))
+        packages.removeAll { $0.id == pkg.id }
+        sites.removeAll { gone.contains($0.id) }
+    }
+
+    func admin() async throws -> AdminState {
+        try await api.admin()
+    }
+
+    // MARK: Veri
 
     func clearHistory() async -> Bool {
         if demo { return true }
@@ -192,6 +225,8 @@ final class SiteStore: ObservableObject {
         }
         api.resetIdentity()
         sites = []
+        packages = []
+        isAdmin = false
         lastCronAt = nil
         CertStore.shared.clear()
         Prefs.shared.resetAll()

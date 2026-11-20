@@ -1,6 +1,6 @@
 import SwiftUI
 import StoreKit
-import UniformTypeIdentifiers
+import UIKit
 
 struct SettingsView: View {
     @EnvironmentObject private var store: SiteStore
@@ -10,11 +10,13 @@ struct SettingsView: View {
     @State private var alert: (title: String, message: String)?
     @State private var confirmClear = false
     @State private var confirmDeleteAll = false
-    @State private var importing = false
     @State private var testing = false
+    @State private var creating = false
+    @State private var joining = false
+    @State private var path: [String] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
                 Section {
                     NavigationLink { LanguageView() } label: {
@@ -27,14 +29,25 @@ struct SettingsView: View {
                 .themedRows()
 
                 Section {
-                    NavigationLink { FalseAlarmView() } label: {
-                        SettingLabel(L.s("set.falseAlarm"), "checkmark.shield.fill", .green,
-                                     value: L.s("set.falseAlarm.value", prefs.retries, prefs.timeoutS))
+                    ForEach(store.packages) { p in
+                        NavigationLink(value: p.id) {
+                            SettingLabel(p.name, p.members > 1 ? "person.2.fill" : "square.stack.3d.up.fill", p.members > 1 ? .purple : .teal,
+                                         value: p.members > 1 ? L.s("package.membersShort", p.members) : L.s("package.sitesShort", store.sites(in: p).count))
+                        }
                     }
+                    Button { creating = true } label: { SettingLabel(L.s("package.create"), "plus", .green) }
+                    Button { joining = true } label: { SettingLabel(L.s("package.join"), "key.fill", .orange) }
+                } header: { SectionLabel(text: L.s("set.packages")) } footer: { Text(L.s("set.packages.footer")) }
+                .themedRows()
+
+                Section {
                     NavigationLink { ServerStatusView() } label: {
                         SettingLabel(L.s("set.server"), "server.rack", .gray, value: serverValue)
                     }
-                } header: { SectionLabel(text: L.s("set.checks")) } footer: { Text(L.s("set.falseAlarm.footer")) }
+                    if store.isAdmin {
+                        NavigationLink { AdminView() } label: { SettingLabel(L.s("admin.title"), "chart.bar.doc.horizontal.fill", .pink) }
+                    }
+                } header: { SectionLabel(text: L.s("set.checks")) }
                 .themedRows()
 
                 Section {
@@ -69,10 +82,6 @@ struct SettingsView: View {
                 .themedRows()
 
                 Section {
-                    if let url = store.exportFile(), !store.sites.isEmpty {
-                        ShareLink(item: url) { SettingLabel(L.s("set.export"), "square.and.arrow.up", .teal) }
-                    }
-                    Button { importing = true } label: { SettingLabel(L.s("set.import"), "square.and.arrow.down", .teal) }
                     Button { confirmClear = true } label: { SettingLabel(L.s("set.clearHistory"), "trash", .red, danger: true) }
                     Button { confirmDeleteAll = true } label: { SettingLabel(L.s("set.deleteAll"), "person.crop.circle.badge.xmark", .red, danger: true) }
                 } header: { SectionLabel(text: L.s("set.data")) } footer: { Text(L.s("set.data.footer")) }
@@ -117,13 +126,9 @@ struct SettingsView: View {
                 }
                 Button(L.s("action.cancel"), role: .cancel) {}
             }
-            .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
-                guard case let .success(url) = result else { return }
-                Task {
-                    let r = await store.importFile(url)
-                    alert = (L.s("set.import"), L.s("set.import.result", r.added, r.skipped))
-                }
-            }
+            .navigationDestination(for: String.self) { id in PackageView(packageId: id) }
+            .sheet(isPresented: $creating) { CreatePackageView { p in path = [p.id] } }
+            .sheet(isPresented: $joining) { JoinPackageView() }
         }
     }
 
@@ -225,24 +230,6 @@ struct AppearanceView: View {
     }
 }
 
-struct FalseAlarmView: View {
-    @EnvironmentObject private var prefs: Prefs
-    var body: some View {
-        List {
-            Section {
-                Stepper(value: $prefs.retries, in: 0...3) {
-                    HStack { Text(L.s("falseAlarm.retries")); Spacer(); Text("\(prefs.retries)").foregroundStyle(Theme.text3).monospacedDigit() }
-                }
-                Picker(L.s("falseAlarm.timeout"), selection: $prefs.timeoutS) {
-                    ForEach([5, 10, 15, 20, 30], id: \.self) { Text(L.s("falseAlarm.seconds", $0)).tag($0) }
-                }
-            } footer: { Text(L.s("falseAlarm.footer")) }
-            .themedRows()
-        }
-        .listStyle(.insetGrouped).themedList().navigationTitle(L.s("set.falseAlarm"))
-    }
-}
-
 struct QuietHoursView: View {
     @EnvironmentObject private var prefs: Prefs
     var body: some View {
@@ -296,6 +283,17 @@ struct ServerStatusView: View {
                     let when = SiteText.relative(Date(timeIntervalSince1970: p.at / 1000))
                     row(L.s("server.lastPush"), p.result == "sent" ? L.s("server.lastPush.sent", when) : L.s("server.lastPush.failed", when, p.result))
                 }
+                Button {
+                    UIPasteboard.general.string = store.api.deviceId
+                } label: {
+                    HStack {
+                        Text(L.s("server.deviceId")).foregroundStyle(Theme.text)
+                        Spacer()
+                        Text(String(store.api.deviceId.prefix(8)) + "…").font(.body.monospaced()).foregroundStyle(Theme.text3)
+                        Image(systemName: "doc.on.doc").font(.footnote).foregroundStyle(Theme.accent)
+                    }
+                }
+                .accessibilityHint(L.s("server.deviceIdHint"))
                 if let e = store.lastError { Text(e).font(.footnote).foregroundStyle(Theme.warn) }
             } footer: { Text(L.s("server.footer")) }
             .themedRows()
