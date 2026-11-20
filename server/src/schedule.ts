@@ -1,23 +1,23 @@
 // Kontrol zamanlaması: tüm kontroller saat başına hizalıdır.
 //
-// Aralık 1–60 dakika arasıdır. Kontroller her saatin başından itibaren aralığın katlarında
-// yapılır: 15 dk → :00 :15 :30 :45, 4 dk → :00 :04 … :56. 60'ı tam bölmeyen aralıklarda
-// (ör. 7 dk → :00 :07 … :56) sayım her saat başında yeniden :00'dan başlar.
+// Aralıklar: 2, 3, 5, 15, 30, 60 dakika (hepsi 60'ı tam böler). Kontroller her saatin başından
+// itibaren aralığın katlarında yapılır: 15 dk → :00 :15 :30 :45, 3 dk → :00 :03 … :57.
 // Sunucu her dakika çalışır ve o dakikada sırası gelen siteleri kontrol eder.
 //
 // Zaman "dakika" cinsinden tutulur: Unix zamanı / 60_000.
 
-export const PRESETS = [1, 5, 10, 15, 30, 60] as const;
-export const MIN_INTERVAL = 1;
+export const PRESETS = [2, 3, 5, 15, 30, 60] as const;
 export const MAX_INTERVAL = 60;
 
 /**
  * İstemciden gelen aralığı doğrular. 2.0 sürümünün gönderebildiği 6/12/24 saatlik
- * değerler 60 dakikaya indirilir. Geçersizse null.
+ * değerler 60 dakikaya indirilir. Listede olmayan değerler geçersizdir (null).
  */
 export function normalizeInterval(n: unknown): number | null {
-  if (typeof n !== "number" || !Number.isInteger(n) || n < MIN_INTERVAL || n > 1440) return null;
-  return Math.min(n, MAX_INTERVAL);
+  if (typeof n !== "number" || !Number.isInteger(n)) return null;
+  if ((PRESETS as readonly number[]).includes(n)) return n;
+  if (n > MAX_INTERVAL && n <= 1440) return MAX_INTERVAL;
+  return null;
 }
 
 export function toMin(ms: number): number {

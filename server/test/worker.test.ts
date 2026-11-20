@@ -13,40 +13,31 @@ const T = (iso: string) => Date.parse(iso);
 
 // ---------------------------------------------------------------- zamanlama
 
-test("aralık doğrulama: 1–60 dk, eski uzun aralıklar 60'a iner", () => {
-  assert.equal(normalizeInterval(4), 4);
-  assert.equal(normalizeInterval(1), 1);
-  assert.equal(normalizeInterval(60), 60);
+test("aralık doğrulama: hazır seçenekler, eski uzun aralıklar 60'a iner", () => {
+  for (const n of [2, 3, 5, 15, 30, 60]) assert.equal(normalizeInterval(n), n);
   assert.equal(normalizeInterval(360), 60);
   assert.equal(normalizeInterval(1440), 60);
-  assert.equal(normalizeInterval(0), null);
-  assert.equal(normalizeInterval(4.5), null);
+  for (const n of [0, 1, 4, 7, 10, 4.5]) assert.equal(normalizeInterval(n), null, String(n));
   assert.equal(normalizeInterval("15"), null);
 });
 
 test("isDue ve nextRun: saat başına hizalı", () => {
   const added = T("2026-11-19T11:07:20Z");
   const q = anchorFor(15, added);
-  assert.ok(!isDue(15, q, tickOf(T("2026-11-19T11:07:00Z"))), "eklendiği dakikada planlı kontrol yok");
+  assert.ok(!isDue(15, q, tickOf(T("2026-11-19T11:00:00Z"))), "eklenmeden önce planlı kontrol yok");
   for (const hhmm of ["11:15", "11:30", "11:45", "12:00"]) assert.ok(isDue(15, q, tickOf(T(`2026-11-19T${hhmm}:00Z`))), hhmm);
   assert.ok(!isDue(15, q, tickOf(T("2026-11-19T11:16:00Z"))));
   assert.ok(isDue(15, q, tickOf(T("2026-11-19T11:59:45Z"))), "cron gecikmesi/erken tetik toleransı");
   assert.equal(nextRun(15, q, T("2026-11-19T11:15:10Z")) * 60_000, T("2026-11-19T11:30:00Z"));
 
-  const four = anchorFor(4, added);
-  for (const hhmm of ["11:08", "11:12", "11:56", "12:00", "12:04"]) assert.ok(isDue(4, four, tickOf(T(`2026-11-19T${hhmm}:00Z`))), hhmm);
-  assert.ok(!isDue(4, four, tickOf(T("2026-11-19T11:10:00Z"))));
-  assert.equal(nextRun(4, four, T("2026-11-19T11:09:00Z")) * 60_000, T("2026-11-19T11:12:00Z"));
+  const three = anchorFor(3, added);
+  for (const hhmm of ["11:09", "11:12", "11:57", "12:00", "12:03"]) assert.ok(isDue(3, three, tickOf(T(`2026-11-19T${hhmm}:00Z`))), hhmm);
+  assert.ok(!isDue(3, three, tickOf(T("2026-11-19T11:10:00Z"))));
+  assert.equal(nextRun(3, three, T("2026-11-19T11:10:00Z")) * 60_000, T("2026-11-19T11:12:00Z"));
 
-  // 60'ı tam bölmeyen aralık: her saat başında yeniden :00
-  const seven = anchorFor(7, added);
-  assert.ok(isDue(7, seven, tickOf(T("2026-11-19T11:56:00Z"))));
-  assert.ok(!isDue(7, seven, tickOf(T("2026-11-19T12:03:00Z"))));
-  assert.ok(isDue(7, seven, tickOf(T("2026-11-19T12:00:00Z"))));
-  assert.equal(nextRun(7, seven, T("2026-11-19T11:57:00Z")) * 60_000, T("2026-11-19T12:00:00Z"));
-
-  const one = anchorFor(1, added);
-  assert.ok(isDue(1, one, tickOf(T("2026-11-19T11:09:00Z"))));
+  const two = anchorFor(2, added);
+  assert.ok(isDue(2, two, tickOf(T("2026-11-19T11:08:00Z"))));
+  assert.ok(!isDue(2, two, tickOf(T("2026-11-19T11:09:00Z"))));
   assert.equal(nextRun(60, anchorFor(60, added), T("2026-11-19T11:07:20Z")) * 60_000, T("2026-11-19T12:00:00Z"));
 });
 
@@ -321,7 +312,8 @@ test("yanlış ortamdaki jeton: diğer ortam denenir, jeton silinmez, sonuç kay
   h.apnsByHost = undefined;
   h.apnsStatus = { code: 403, reason: "InvalidProviderToken" };
   const r = await call(h, "POST", "/v1/push/test", {}, T("2026-11-19T11:20:00Z"));
-  assert.equal(r.status, 502);
+  assert.equal(r.status, 200);
+  assert.equal(r.json.reason, "InvalidProviderToken");
   const st2 = (await call(h, "GET", "/v1/state", undefined, T("2026-11-19T11:21:00Z"))).json;
   assert.equal(st2.lastPush.result, "403 InvalidProviderToken");
 });

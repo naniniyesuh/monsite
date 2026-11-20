@@ -153,63 +153,24 @@ struct EditSiteView: View {
 
 struct IntervalPicker: View {
     @Binding var selection: Int
-    @State private var custom = false
-    @FocusState private var fieldFocused: Bool
-
-    private var isCustom: Bool { custom || !CheckInterval.presets.contains(selection) }
 
     var body: some View {
-        VStack(spacing: 10) {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
-                ForEach(CheckInterval.presets, id: \.self) { m in
-                    chip(CheckInterval.label(m), on: !isCustom && m == selection) {
-                        custom = false
-                        fieldFocused = false
-                        selection = m
-                    }
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+            ForEach(CheckInterval.presets, id: \.self) { m in
+                let on = m == selection
+                Button { selection = m } label: {
+                    Text(CheckInterval.label(m))
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .foregroundStyle(on ? .white : Theme.text)
+                        .background(on ? Theme.accentFill : Theme.bg, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(on ? Theme.accentFill : Theme.border))
                 }
-                chip(L.s("interval.custom"), on: isCustom) {
-                    custom = true
-                    fieldFocused = true
-                }
-            }
-            if isCustom {
-                HStack(spacing: 12) {
-                    Text(L.s("interval.every")).foregroundStyle(Theme.text2)
-                    TextField("4", value: Binding(get: { selection },
-                                                   set: { selection = CheckInterval.clamp($0) }), format: .number)
-                        .keyboardType(.numberPad)
-                        .focused($fieldFocused)
-                        .multilineTextAlignment(.center)
-                        .font(.body.weight(.semibold).monospacedDigit())
-                        .frame(width: 56, height: 36)
-                        .background(Theme.bg, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.border))
-                    Text(L.s("interval.minutes")).foregroundStyle(Theme.text2)
-                    Spacer(minLength: 0)
-                    Stepper("", value: $selection, in: CheckInterval.range).labelsHidden()
-                }
-                Text(L.s("interval.customHint")).font(.footnote).foregroundStyle(Theme.text3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
         .padding(.vertical, 6)
-        .onAppear { custom = !CheckInterval.presets.contains(selection) }
-    }
-
-    private func chip(_ title: String, on: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .foregroundStyle(on ? .white : Theme.text)
-                .background(on ? Theme.accentFill : Theme.bg, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(on ? Theme.accentFill : Theme.border))
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 
@@ -223,9 +184,6 @@ struct AlignmentHint: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(L.s("add.aligned")).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text)
                 Text(L.s("add.alignedExample", examples)).font(.footnote).foregroundStyle(Theme.text2)
-                if 60 % CheckInterval.clamp(interval) != 0 {
-                    Text(L.s("add.alignedUneven")).font(.footnote).foregroundStyle(Theme.text3)
-                }
             }
         }
         .padding(.vertical, 4)

@@ -86,13 +86,15 @@ struct SiteHistory: Codable {
     }
 }
 
-/// Kontrol sıklığı (dakika). Hazır seçenekler ve 1–60 dakika arası özel değer.
+/// Kontrol sıklığı (dakika). Hepsi 60'ı tam böler, böylece kontroller hep saat başına hizalı kalır.
 enum CheckInterval {
-    static let presets = [1, 5, 10, 15, 30, 60]
-    static let range = 1...60
+    static let presets = [2, 3, 5, 15, 30, 60]
     static let defaultValue = 15
 
-    static func clamp(_ minutes: Int) -> Int { min(max(minutes, range.lowerBound), range.upperBound) }
+    /// Listede olmayan bir değeri (ör. eski 6 saatlik ayar ya da dışa aktarılmış dosya) en yakın seçeneğe çeker.
+    static func clamp(_ minutes: Int) -> Int {
+        presets.min { abs($0 - minutes) < abs($1 - minutes) } ?? defaultValue
+    }
 
     static func label(_ minutes: Int) -> String {
         if minutes >= 60, minutes % 60 == 0 {

@@ -28,12 +28,12 @@ enum DemoData {
 
     static func state() -> ([Site], Date?) {
         let sites = [
-            site("d1", "https://shop.example.com/", "shop.example.com", 1, status: "down", sinceH: 0.25, recent: recent(1, downAt: [0, 1], code: 503), code: 503),
+            site("d1", "https://shop.example.com/", "shop.example.com", 2, status: "down", sinceH: 0.25, recent: recent(2, downAt: [0, 1], code: 503), code: 503),
             site("d2", "https://alpp.studio/", "alpp.studio", 15, status: "up", sinceH: 74, recent: recent(15)),
             site("d3", "https://alpp.studio/upsite/", "alpp.studio/upsite", 60, status: "up", sinceH: 290, recent: recent(60)),
             site("d4", "https://api.example.com/", "api.example.com", 5, status: "up", sinceH: 20, recent: recent(5, downAt: [9, 10])),
             site("d5", "https://example.com/", "example.com", 30, status: "up", sinceH: 220, recent: recent(30)),
-            site("d6", "https://docs.example.org/", "docs.example.org", 10, status: "up", sinceH: 400, recent: [], paused: true),
+            site("d6", "https://docs.example.org/", "docs.example.org", 3, status: "up", sinceH: 400, recent: [], paused: true),
         ]
         return (sites, lastTick)
     }

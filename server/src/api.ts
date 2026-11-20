@@ -140,7 +140,8 @@ export async function handle(env: Env, req: Request, ctx: Ctx, opts: RunOptions 
     if (res.outcome === "invalid-token" && res.reason !== "BadDeviceToken") {
       await env.DB.prepare("UPDATE devices SET apns_token = NULL WHERE id = ?").bind(device.id).run();
     }
-    return json({ outcome: res.outcome, status: res.status, reason: res.reason ?? null }, res.outcome === "sent" ? 200 : 502);
+    // Apple reddetse de 200 dönülür; uygulama nedeni ("BadDeviceToken" vb.) kullanıcıya gösterir.
+    return json({ outcome: res.outcome, status: res.status, reason: res.reason ?? null });
   }
 
   if (path === "/v1/sites" && method === "POST") {
