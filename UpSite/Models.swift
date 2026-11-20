@@ -33,7 +33,8 @@ struct Site: Identifiable, Codable, Hashable {
 
     var since: Date? { statusSince.map { Date(timeIntervalSince1970: $0 / 1000) } }
     var lastCheck: Date? { lastCheckAt.map { Date(timeIntervalSince1970: $0 / 1000) } }
-    var nextCheck: Date? { nextCheckAt.map { Date(timeIntervalSince1970: $0 / 1000) } }
+    /// Sonraki planlı kontrol; sunucuyla aynı kuralla yerelde hesaplanır, böylece uygulama açıkken eskimez.
+    var nextCheck: Date? { paused ? nil : CheckInterval.upcoming(intervalMin, count: 1).first }
 
     /// Çubuklar için eskiden yeniye sonuçlar
     var recentOK: [Bool?] {

@@ -45,11 +45,11 @@ jobs:
             xcrun simctl io "$UDID" screenshot "shots/$lang-$name.png"
           }
           for lang in tr en; do
-            run $lang 01-siteler 8
-            run $lang 02-ayrinti 8 -UpSiteOpenSite d1
-            run $lang 03-sertifikalar 8 -UpSiteTab certs
-            run $lang 04-ayarlar 8 -UpSiteTab settings
-            run $lang 05-ekle 8 -UpSiteAdd -UpSiteAddInterval 3
+            run $lang 01-siteler 15
+            run $lang 02-ayrinti 15 -UpSiteOpenSite d1
+            run $lang 03-sertifikalar 15 -UpSiteTab certs
+            run $lang 04-ayarlar 15 -UpSiteTab settings
+            run $lang 05-ekle 15 -UpSiteAdd -UpSiteAddInterval 3
           done
           ls -la shots
 
