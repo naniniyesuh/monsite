@@ -6,6 +6,17 @@
 	<false/>
 	<key>UpSiteAPIBase</key>
 	<string>$(UPSITE_API_BASE)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>studio.alpp.upsite.join</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>upsite</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleAllowMixedLocalizations</key>
 	<true/>
 	<key>CFBundleLocalizations</key>

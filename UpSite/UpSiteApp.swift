@@ -47,6 +47,27 @@ final class RootRouter: ObservableObject {
     static let shared = RootRouter()
     enum Tab: Hashable { case sites, certificates, settings }
     @Published var tab: Tab = .sites
+    /// Davet bağlantısından gelen paket anahtarı: "Pakete katıl" sayfası bununla açılır.
+    @Published var invite: Invite?
+
+    struct Invite: Identifiable { let id = UUID(); let key: String }
+
+    /// https://alpp.studio/upsite/join/?k=XXXX-XXXX-XXXX ya da upsite://join?k=…
+    @discardableResult
+    func handle(_ url: URL) -> Bool {
+        let isWeb = (url.scheme == "https" || url.scheme == "http") && url.host == "alpp.studio" && url.path.hasPrefix("/upsite/join")
+        let isScheme = url.scheme == "upsite" && (url.host == "join" || url.path.contains("join"))
+        guard isWeb || isScheme else { return false }
+        let raw = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "k" || $0.name == "key" }?.value ?? ""
+        let key = raw.uppercased().filter { $0.isLetter || $0.isNumber }
+        guard key.count >= 8 else { return false }
+        invite = Invite(key: key)
+        return true
+    }
+
+    static func inviteURL(_ key: String) -> URL {
+        URL(string: "https://alpp.studio/upsite/join/?k=\(SitePackage.pretty(key))")!
+    }
 
     init() {
         // Ekran görüntüleri için: -UpSiteTab certs|settings
@@ -80,6 +101,10 @@ struct UpSiteApp: App {
                 .preferredColorScheme(prefs.colorScheme)
                 .tint(Theme.accent)
                 .id(prefs.language)
+                .onOpenURL { router.handle($0) }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    if let url = activity.webpageURL { router.handle(url) }
+                }
         }
         .onChange(of: scenePhase) { phase in
             guard phase == .active else { return }
@@ -109,6 +134,7 @@ struct RootView: View {
                 if splash { SplashView().transition(.opacity) }
             }
             .task { await launch() }
+            .sheet(item: $router.invite) { inv in JoinPackageView(initialKey: inv.key) }
     }
 
     /// Açılış: en az 1,3 sn animasyon; bu sırada siteler ve sertifikalar hazırlanır (en fazla 3 sn beklenir).

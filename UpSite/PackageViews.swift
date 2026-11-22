@@ -56,7 +56,7 @@ struct PackageView: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
-                        ShareLink(item: L.s("package.shareText", pkg.name, pkg.prettyKey)) {
+                        ShareLink(item: L.s("package.shareText", pkg.name, RootRouter.inviteURL(pkg.key).absoluteString)) {
                             Label(L.s("package.share"), systemImage: "square.and.arrow.up").frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
@@ -205,6 +205,8 @@ struct CreatePackageView: View {
 
 /// Anahtarla pakete katılma
 struct JoinPackageView: View {
+    /// Davet bağlantısından gelen anahtar; doldurulur, "Katıl" kullanıcıya bırakılır.
+    var initialKey: String? = nil
     @EnvironmentObject private var store: SiteStore
     @Environment(\.dismiss) private var dismiss
     @State private var key = ""
@@ -229,7 +231,7 @@ struct JoinPackageView: View {
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
                         if let error { Text(error).foregroundStyle(Theme.down) }
-                        Text(L.s("package.joinFooter"))
+                        Text(initialKey != nil ? L.s("package.inviteFooter") : L.s("package.joinFooter"))
                     }
                 }
             }
@@ -246,7 +248,9 @@ struct JoinPackageView: View {
                     }
                 }
             }
-            .onAppear { focused = true }
+            .onAppear {
+                if let initialKey, key.isEmpty { key = SitePackage.pretty(initialKey) } else { focused = true }
+            }
         }
     }
 
