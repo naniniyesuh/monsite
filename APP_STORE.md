@@ -112,6 +112,22 @@ Değişenler: paketler (siteleri ekiple paylaşma), açılış animasyonu, yöne
 
 ---
 
+## 1d. Sürüm 2.1.1 (6)
+
+Değişen: paket davet bağlantısı (https://alpp.studio/upsite/join/?k=…). Uygulama yüklüyse bağlantı uygulamayı açar ve anahtarı doldurur; değilse davet sayfası App Store'a yönlendirir. Associated Domains yetkisi eklendi (`applinks:alpp.studio`).
+
+**Bu sürümdeki yenilikler**
+```
+• Paket paylaşımı artık bir bağlantıyla: WhatsApp ya da Mesajlar'dan gönderin, dokunan kişinin uygulamasında anahtar otomatik dolsun
+```
+
+**What's New**
+```
+• Share packages with a link: send it via WhatsApp or Messages, and the key fills in automatically when it's tapped
+```
+
+---
+
 ## 2. Mağaza metinleri
 
 ### Türkçe

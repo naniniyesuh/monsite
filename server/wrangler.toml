@@ -25,7 +25,7 @@ APNS_TOPIC = "studio.alpp.monsite"
 MAX_SITES_PER_DEVICE = "50"
 MAX_DEVICES = "500"
 # Bu derleme numarasının altındaki uygulamalar "Güncelleme gerekli" ekranı gösterir (2.0.1 ve sonrası).
-MIN_APP_BUILD = "4"
+MIN_APP_BUILD = "5"
 # Paket sınırları
 MAX_SITES_PER_PACKAGE = "50"
 MAX_PACKAGES_PER_DEVICE = "5"
