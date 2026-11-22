@@ -32,7 +32,7 @@ MAX_PACKAGES_PER_DEVICE = "5"
 MAX_MEMBERS = "20"
 MAX_PACKAGES = "300"
 # Yönetici ekranını görebilecek cihaz kimlikleri (virgülle). Kimlik tek başına yetki vermez; cihazın gizli anahtarı da gerekir.
-ADMIN_DEVICE_IDS = ""
+ADMIN_DEVICE_IDS = "1b1680c1-f494-4ea4-8b3a-1be7555f3a66"
 
 # Gizli değerler (wrangler secret put ile):
 #   APNS_KEY      .p8 dosyasının içeriği
